@@ -1,0 +1,19 @@
+{
+  "name": "the-daily-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A newsroom that files, subs and publishes copy",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  }
+}
