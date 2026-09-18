@@ -8,7 +8,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:ui": "docker compose --profile tools up -d viewer",
+    "db:ui:down": "docker compose stop viewer"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

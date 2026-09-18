@@ -77,9 +77,13 @@ says what changed.
 One concern per pull request. If the description needs the word "and", it is two
 pull requests. Keep them under about 300 lines so they can actually be read.
 
-Every pull request needs a review from someone who does not own that area. This
-is how five people end up knowing the whole system, which we are each examined
-on separately.
+Nothing reaches main except through a pull request, even a small change, so the
+history says what went in and why. Describe what the change does and how you
+checked it.
+
+When someone else is around to read it, ask them, especially for anything the
+rest of us build on. We are each examined on the whole system separately, so
+reading each other's pull requests is the cheap way to get there.
 
 ## Using AI tools
 

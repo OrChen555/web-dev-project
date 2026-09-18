@@ -1,6 +1,6 @@
-# The database only. The application itself runs with npm start, so that anyone
-# reviewing the project can point MONGODB_URI at their own MongoDB instead and
-# never install Docker at all.
+# The database, plus an optional viewer for it. The application itself runs with
+# npm start, so that anyone reviewing the project can point MONGODB_URI at their
+# own MongoDB instead and never install Docker at all.
 services:
   mongo:
     image: mongo:7
@@ -11,6 +11,25 @@ services:
       - '127.0.0.1:27017:27017'
     volumes:
       - mongo-data:/data/db
+
+  # A way to read and edit the data in a browser while developing. It is not part
+  # of the system and does not start with the database: npm run db:ui.
+  viewer:
+    image: mongo-express:1
+    container_name: daily-web-mongo-viewer
+    profiles:
+      - tools
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - '127.0.0.1:8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      # No login on something that only listens on localhost, so that no password
+      # has to live in this file.
+      ME_CONFIG_BASICAUTH: 'false'
 
 volumes:
   mongo-data:
