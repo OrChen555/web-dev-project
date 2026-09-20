@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const config = require('../src/config');
 const db = require('../src/db');
@@ -27,15 +26,17 @@ const copy = (title, summary) => ({
 });
 
 async function people() {
-  const passwordHash = await bcrypt.hash(PASSWORD, 10);
+  // password is a virtual: the model hashes it on save, so a readable password
+  // never reaches the database.
+  const password = PASSWORD;
 
   // Two reporters rather than one, because the only way to check that a
   // reporter cannot touch someone else's article is to have someone else.
   const [admin, dana, yonatan, michal] = await User.create([
-    { username: 'admin', passwordHash, name: 'מנהלת המערכת', role: 'editor', isAdmin: true },
-    { username: 'dana', passwordHash, name: 'דנה לוי', role: 'reporter' },
-    { username: 'yonatan', passwordHash, name: 'יונתן שגב', role: 'reporter' },
-    { username: 'michal', passwordHash, name: 'מיכל ברנע', role: 'editor' }
+    { username: 'admin', password, name: 'מנהלת המערכת', role: 'editor', isAdmin: true },
+    { username: 'dana', password, name: 'דנה לוי', role: 'reporter' },
+    { username: 'yonatan', password, name: 'יונתן שגב', role: 'reporter' },
+    { username: 'michal', password, name: 'מיכל ברנע', role: 'editor' }
   ]);
 
   return { admin, dana, yonatan, michal };
