@@ -1,0 +1,463 @@
+/* The pieces screens are built from. Open /styleguide to see all of them on one
+   page with the markup to copy.
+
+   Everything here uses the values in tokens.css and nothing else, and every
+   interactive piece carries all five states: rest, hover, focus, active and
+   disabled. A control that only has a rest state is half finished. */
+
+/* Surfaces ---------------------------------------------------------------- */
+
+.panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+}
+
+.panel + .panel { margin-block-start: var(--space-5); }
+
+.narrow {
+  max-width: 24rem;
+  margin: var(--space-7) auto;
+}
+
+.lede {
+  margin-block-start: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+/* Buttons ----------------------------------------------------------------- */
+
+.button,
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.button:hover,
+button:hover { background: #73160f; }
+
+.button:active,
+button:active { background: #5d110c; }
+
+.button:disabled,
+button:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button.secondary,
+button.secondary {
+  background: var(--paper-raised);
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.button.secondary:hover,
+button.secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--paper-raised);
+}
+
+.button.quiet,
+button.quiet {
+  min-height: auto;
+  padding: var(--space-1) var(--space-3);
+  background: none;
+  border-color: var(--rule);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+
+.button.quiet:hover,
+button.quiet:hover {
+  background: none;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.button.danger,
+button.danger {
+  background: var(--paper-raised);
+  border-color: var(--rule-strong);
+  color: var(--state-returned);
+}
+
+.button.danger:hover,
+button.danger:hover {
+  background: var(--state-returned);
+  border-color: var(--state-returned);
+  color: var(--accent-ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-5);
+}
+
+/* Forms ------------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block-end: var(--space-4);
+}
+
+label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  color: inherit;
+  font: inherit;
+}
+
+textarea {
+  min-height: 8rem;
+  line-height: var(--leading-normal);
+  resize: vertical;
+}
+
+input:hover,
+select:hover,
+textarea:hover { border-color: var(--ink-faint); }
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--paper-sunk);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+/* aria-invalid rather than a class, so that the styling and what a screen
+   reader announces can never disagree. */
+input[aria-invalid='true'],
+select[aria-invalid='true'],
+textarea[aria-invalid='true'] { border-color: var(--state-returned); }
+
+.hint {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
+.problem {
+  margin: 0;
+  color: var(--state-returned);
+  font-size: var(--text-sm);
+}
+
+/* Status ------------------------------------------------------------------ */
+
+/* Always carries its own words. Colour is the quick signal, not the message. */
+.status {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status.draft { background: var(--state-draft-bg); color: var(--state-draft); }
+.status.pending { background: var(--state-pending-bg); color: var(--state-pending); }
+.status.returned { background: var(--state-returned-bg); color: var(--state-returned); }
+.status.published { background: var(--state-published-bg); color: var(--state-published); }
+
+/* Articles ---------------------------------------------------------------- */
+
+.cards {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: var(--space-4);
+  padding-block-end: var(--space-5);
+  border-block-end: 1px solid var(--rule);
+}
+
+.card:last-child { border-block-end: 0; }
+
+.card .thumb {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunk);
+  object-fit: cover;
+}
+
+.card h2 {
+  margin-block-end: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.card h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card h2 a:hover { color: var(--accent); }
+
+.card p {
+  margin-block-end: var(--space-3);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+/* Reporter, category and date. The same line appears on the card and at the
+   top of the article, so it is one piece rather than two. */
+.byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+.byline .who { color: var(--ink-soft); font-weight: 600; }
+.byline .sep { color: var(--rule-strong); }
+
+.article-body {
+  font-size: var(--text-lg);
+  line-height: var(--leading-loose);
+}
+
+.article-body p { margin-block-end: var(--space-5); }
+
+/* Tables ------------------------------------------------------------------ */
+
+.rows {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.rows th,
+.rows td {
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--rule);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.rows th {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.rows tbody tr:hover { background: var(--paper-sunk); }
+
+/* A table cannot reflow, so on a narrow screen it scrolls inside its own box
+   rather than pushing the page sideways. */
+.scrolls {
+  overflow-x: auto;
+  margin-block-start: var(--space-4);
+}
+
+/* Sidebar ----------------------------------------------------------------- */
+
+.aside-card {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.aside-card h2 {
+  font-size: var(--text-sm);
+  font-family: var(--font-ui);
+  color: var(--ink-soft);
+  text-transform: none;
+}
+
+/* Notices ----------------------------------------------------------------- */
+
+.notice {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-inline-start: 3px solid var(--ink-faint);
+  border-radius: var(--radius-sm);
+  background: var(--paper-raised);
+  font-size: var(--text-sm);
+}
+
+.notice.good { border-inline-start-color: var(--state-published); background: var(--state-published-bg); }
+.notice.warn { border-inline-start-color: var(--state-pending); background: var(--state-pending-bg); }
+.notice.bad { border-inline-start-color: var(--state-returned); background: var(--state-returned-bg); }
+
+.notice p:last-child { margin-block-end: 0; }
+
+/* The states people forget --------------------------------------------------
+
+   A list with nothing in it, and a list that has not arrived yet. Both happen
+   on every screen in this project and both look broken if nobody designs them. */
+
+.empty {
+  padding: var(--space-7) var(--space-5);
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.empty h2 {
+  font-size: var(--text-base);
+  font-family: var(--font-ui);
+  color: var(--ink);
+}
+
+.empty p { margin-block-end: 0; font-size: var(--text-sm); }
+
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--paper-sunk) 25%, var(--rule) 37%, var(--paper-sunk) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+.skeleton.line { height: 0.75rem; margin-block-end: var(--space-2); }
+.skeleton.line.short { width: 40%; }
+.skeleton.block { aspect-ratio: 4 / 3; }
+
+@keyframes shimmer {
+  from { background-position: 100% 50%; }
+  to { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .button, button { transition: none; }
+}
+
+/* Toolbar ----------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  padding-block-end: var(--space-5);
+  margin-block-end: var(--space-5);
+  border-block-end: 1px solid var(--rule);
+}
+
+.toolbar .field { margin-block-end: 0; }
+.toolbar .grow { flex: 1 1 12rem; }
+
+/* Dialog ------------------------------------------------------------------ */
+
+dialog {
+  max-width: 26rem;
+  padding: var(--space-6);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: inherit;
+}
+
+dialog::backdrop { background: rgba(22, 22, 26, 0.45); }
+
+/* Utilities --------------------------------------------------------------- */
+
+.muted { color: var(--ink-soft); font-size: var(--text-sm); }
+.stack { display: grid; gap: var(--space-4); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.between { justify-content: space-between; }
+
+/* Visible to a screen reader, not on screen. For labels a sighted person gets
+   from context and everybody else does not. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .panel { padding: var(--space-4); }
+  .narrow { margin-block: var(--space-5); }
+  .card { grid-template-columns: 1fr; }
+  .card .thumb { aspect-ratio: 16 / 9; }
+}
+
+.status-code {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+
+/* The style guide itself. Only used by /styleguide. */
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+}
+
+.swatch span {
+  display: block;
+  height: 2.5rem;
+  margin-block-end: var(--space-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+}
+
+.swatch code { font-size: var(--text-xs); }
+
+.shells dt {
+  margin-block-start: var(--space-3);
+  font-weight: 600;
+}
+
+.shells dd {
+  margin-inline-start: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+code {
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+  background: var(--paper-sunk);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.875em;
+}

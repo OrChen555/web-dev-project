@@ -6,8 +6,10 @@
   <title><%= locals.title || 'חדשות' %> &middot; The Daily Web</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@500;700&display=swap">
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
 </head>
 <body>
   <header class="masthead">
@@ -15,8 +17,16 @@
       <strong>The Daily Web</strong>
       <span>חדשות</span>
     </a>
+
     <nav>
       <a href="/">הבית</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <% if (user.isAdmin) { %><a href="/admin/users">ניהול משתמשים</a><% } %>
+        <span class="whoami"><%= user.name %></span>
+        <button type="button" class="quiet" id="logout">יציאה</button>
+      <% } else { %>
+        <a href="/login">כניסה</a>
+      <% } %>
     </nav>
   </header>
   <main>

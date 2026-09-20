@@ -1,0 +1,141 @@
+/* Reset, typography and the frame every page sits in. Screens do not restyle
+   anything here; they compose the pieces in components.css inside it. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+h1, h2, h3 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+}
+
+h1 { font-size: var(--text-2xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-lg); }
+
+p { margin: 0 0 var(--space-4); }
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+img { max-width: 100%; height: auto; }
+
+/* One focus ring for the whole site, and never removed. Losing it makes the
+   site unusable by keyboard, which is a good share of people. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* The frame: masthead, the page itself, footer. Written with logical
+   properties so that the whole thing works unchanged in either direction. */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-block-end: 3px double var(--rule-strong);
+}
+
+.wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.wordmark strong {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
+}
+
+.wordmark span {
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+.masthead nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.masthead nav a {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.masthead nav a:hover { color: var(--accent); }
+
+.whoami {
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+main {
+  max-width: var(--shell);
+  min-height: 60vh;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-5) var(--space-7);
+}
+
+/* Two column page, for the feed and its sidebar. The sidebar drops underneath
+   on a narrow screen rather than being squeezed. */
+.with-aside {
+  display: grid;
+  grid-template-columns: 1fr 17rem;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* A single column of running text, held to a readable line length. */
+.reading {
+  max-width: var(--measure);
+  margin-inline: auto;
+}
+
+footer {
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  border-block-start: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 60rem) {
+  .with-aside { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 40rem) {
+  .masthead { padding: var(--space-4); }
+  .wordmark strong { font-size: var(--text-xl); }
+  main { padding: var(--space-5) var(--space-4) var(--space-6); }
+  h1 { font-size: var(--text-xl); }
+}

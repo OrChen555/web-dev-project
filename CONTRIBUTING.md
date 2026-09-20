@@ -32,6 +32,32 @@ are here so that nobody puts a schema in a controller or a rule in a route.
 
 We do not create a directory before there is a file to put in it.
 
+## Design
+
+Open `/styleguide` while the server is running. Every component we have is on
+that page: buttons, fields, the article card, the four status badges, tables,
+notices, the empty state and the loading skeleton. Build your screens out of
+those rather than inventing a fifth kind of button.
+
+    public/css/tokens.css      every colour, space, size and radius
+    public/css/base.css        reset, typography, the page frame
+    public/css/components.css  the pieces screens are built from
+
+**A screen that needs a value not in `tokens.css` adds it there first.** Five
+people picking their own greys is how a project ends up looking like five
+projects.
+
+Three rules that are easy to miss and cost marks:
+
+- **Every interactive thing needs all five states**: rest, hover, focus, active,
+  disabled. The components here already have them; keep it that way.
+- **Colour is never the only signal.** A status badge carries its words as well,
+  because colour alone is unreadable to a good number of people. Every pair in
+  the palette is checked against 4.5:1.
+- **Logical properties, not left and right.** `margin-inline-start`, not
+  `margin-left`. The site is right to left, and the logical version is the one
+  that stays correct.
+
 ## Style
 
 Two spaces, single quotes, semicolons, English names. The interface is in Hebrew;

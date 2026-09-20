@@ -57,6 +57,12 @@ Set `SEED_PASSWORD` in `.env` to use something else. Two reporters rather than
 one, because checking that a reporter cannot touch someone else's article needs
 someone else.
 
+## The style guide
+
+With the server running, <http://localhost:3000/styleguide> shows every
+component in the system on one page. Screens are built from those; see
+[CONTRIBUTING.md](./CONTRIBUTING.md) for the rules.
+
 ## Project structure
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the layout and the conventions, and

@@ -7,6 +7,7 @@ const { home } = require('../controllers/home');
 const { loginPage } = require('../controllers/session');
 const { requireAdmin } = require('../middlewares/auth');
 const { page: usersPage } = require('../controllers/users');
+const { styleguide } = require('../controllers/styleguide');
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use('/api/users', users);
 router.get('/', home);
 router.get('/login', loginPage);
 router.get('/admin/users', requireAdmin, usersPage);
+router.get('/styleguide', styleguide);
 
 module.exports = router;
