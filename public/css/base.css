@@ -107,6 +107,17 @@ main {
   align-items: start;
 }
 
+/* A narrow working panel beside a wide one. The panel is first in the markup,
+   which in a right to left page puts it on the right. On a narrow screen the
+   two stack, and the wide half goes first because that is what someone opening
+   the screen came to look at. */
+.with-panel {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
 /* A single column of running text, held to a readable line length. */
 .reading {
   max-width: var(--measure);
@@ -124,6 +135,9 @@ footer {
 
 @media (max-width: 60rem) {
   .with-aside { grid-template-columns: 1fr; }
+
+  .with-panel { grid-template-columns: 1fr; }
+  .with-panel > :first-child { order: 2; }
 }
 
 @media (max-width: 40rem) {

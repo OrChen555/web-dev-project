@@ -1,13 +1,40 @@
 const rows = document.getElementById('rows');
 const form = document.getElementById('create');
 const problem = document.getElementById('problem');
+const created = document.getElementById('created');
 
 const ROLES = { reporter: 'כתב', editor: 'עורך' };
 
+// One message showing at a time. Both are cleared before every action, so a
+// success line can never sit above a failure that came after it.
+const clear = () => {
+  problem.hidden = true;
+  created.hidden = true;
+};
+
 const say = (text) => {
+  clear();
   problem.textContent = text;
   problem.hidden = false;
 };
+
+const cheer = (text) => {
+  clear();
+  created.textContent = text;
+  created.hidden = false;
+};
+
+// The server answers in English, which is right for the log but not for the
+// screen. The wording a person reads is decided here, from the status.
+const WORDING = {
+  400: 'חסרים פרטים, או שהתפקיד אינו תקין.',
+  401: 'פג תוקף החיבור. יש להתחבר מחדש.',
+  403: 'רק מנהל המערכת רשאי לעשות זאת.',
+  404: 'החשבון כבר אינו קיים.',
+  409: 'שם המשתמש הזה כבר תפוס.'
+};
+
+const explain = (status) => WORDING[status] || 'משהו השתבש. נסו שוב.';
 
 // textContent and not innerHTML: these names came from a form, and a name of
 // <script>...</script> would otherwise run on this page.
@@ -41,7 +68,7 @@ function row(user) {
 
 async function load() {
   const response = await fetch('/api/users');
-  if (!response.ok) return say('לא ניתן לטעון את רשימת המשתמשים.');
+  if (!response.ok) return say('לא ניתן לטעון את רשימת החשבונות.');
 
   const users = await response.json();
   rows.replaceChildren(...users.map(row));
@@ -49,17 +76,21 @@ async function load() {
 
 async function destroy(user) {
   if (!window.confirm(`למחוק את ${user.username}?`)) return;
+  clear();
 
   const response = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
-  if (response.ok) return load();
 
-  const body = await response.json().catch(() => ({}));
-  say(body.error || 'המחיקה נכשלה.');
+  if (response.ok) {
+    cheer(`החשבון ${user.username} נמחק.`);
+    return load();
+  }
+
+  say(explain(response.status));
 }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  problem.hidden = true;
+  clear();
 
   const response = await fetch('/api/users', {
     method: 'POST',
@@ -73,12 +104,18 @@ form.addEventListener('submit', async (event) => {
   });
 
   if (response.ok) {
+    const user = await response.json();
     form.reset();
+
+    // Name the account rather than saying "done". Somebody who mistyped the
+    // username finds out here instead of in the table.
+    cheer(`החשבון ${user.username} נוצר, בתפקיד ${ROLES[user.role] || user.role}.`);
+
+    form.username.focus();
     return load();
   }
 
-  const body = await response.json().catch(() => ({}));
-  say(body.error || 'היצירה נכשלה.');
+  say(explain(response.status));
 });
 
 load();
