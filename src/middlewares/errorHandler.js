@@ -1,24 +1,41 @@
 const logger = require('../logger');
+const { HttpError } = require('../errors');
 
-// The specific cases come first, and err.status is the fallback. body-parser
-// sets a status of its own on a malformed body, so checking err.status above
-// them would answer from the library and never reach the branch that names it.
+// Decides both the code and the wording, because some of these errors carry a
+// message written for us rather than for whoever is asking.
 //
-// Mongoose reports an id it cannot parse as a CastError. From the caller's side
-// such a URL simply names nothing, so it answers 404 rather than 400, and we
-// avoid announcing that our ids are ObjectIds.
-function statusFor(err) {
-  if (err.name === 'CastError') return 404;
-  if (err.name === 'ValidationError') return 400;
-  if (err.type === 'entity.parse.failed') return 400;
-  if (err.status) return err.status;
-  return 500;
+// A CastError means mongoose could not read the id. From the caller's side that
+// URL simply names nothing, so it answers 404 rather than 400 — and its own
+// message says the model name, the field and that we use mongoose, so it is
+// replaced rather than forwarded.
+function describe(err) {
+  // instanceof, not err.status. Libraries set a status of their own: body-parser
+  // marks a malformed body 400 and attaches its own wording, which would then be
+  // forwarded untouched. Only a message we wrote ourselves is safe to repeat.
+  if (err instanceof HttpError) return { status: err.status, message: err.message };
+  if (err.name === 'CastError') return { status: 404, message: 'No such thing' };
+  if (err.name === 'ValidationError') return { status: 400, message: 'Some of the values are not valid' };
+  if (err.type === 'entity.parse.failed') return { status: 400, message: 'The request body is not valid JSON' };
+
+  // Two accounts asking for the same username at the same moment both pass the
+  // check in the controller, and the unique index refuses the second one. The
+  // index is the real guarantee; this turns its refusal into the same answer the
+  // controller would have given.
+  if (err.code === 11000) return { status: 409, message: 'That username is taken' };
+
+  // Anything else that arrived with a status of its own decided it for a reason:
+  // a body over the limit is a 413, a URL that will not decode is a 400. Keeping
+  // the status and replacing only the wording is the point. Calling these 500
+  // would blame us for a bad request and bury the reason in a stack trace.
+  if (err.status && err.status < 500) return { status: err.status, message: 'That request could not be accepted' };
+
+  return { status: 500, message: 'Something went wrong on our side' };
 }
 
 // The fourth parameter is what marks this as Express's error middleware, so it
 // stays even though nothing here calls it.
 function errorHandler(err, req, res, next) {
-  const status = statusFor(err);
+  const { status, message } = describe(err);
   const where = { status, method: req.method, url: req.originalUrl };
 
   if (status >= 500) logger.error(err.message, { ...where, stack: err.stack });
@@ -26,9 +43,6 @@ function errorHandler(err, req, res, next) {
 
   // A response that already began cannot be answered a second time.
   if (res.headersSent) return next(err);
-
-  // Our own faults are recorded in full and described to the caller in one line.
-  const message = status === 500 ? 'Something went wrong on our side' : err.message;
 
   // The trailing slash matters: without it /apiary would answer with JSON.
   if (req.originalUrl.startsWith('/api/')) return res.status(status).json({ error: message });

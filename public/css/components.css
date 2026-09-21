@@ -8,7 +8,7 @@
 /* Surfaces ---------------------------------------------------------------- */
 
 .panel {
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
   padding: var(--space-6);
@@ -49,10 +49,10 @@ button {
 }
 
 .button:hover,
-button:hover { background: #73160f; }
+button:hover { background: var(--accent-hover); }
 
 .button:active,
-button:active { background: #5d110c; }
+button:active { background: var(--accent-active); }
 
 .button:disabled,
 button:disabled,
@@ -63,7 +63,7 @@ button:disabled,
 
 .button.secondary,
 button.secondary {
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   border-color: var(--rule-strong);
   color: var(--ink);
 }
@@ -72,7 +72,7 @@ button.secondary {
 button.secondary:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: var(--paper-raised);
+  background: var(--surface-raised);
 }
 
 .button.quiet,
@@ -95,15 +95,15 @@ button.quiet:hover {
 
 .button.danger,
 button.danger {
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   border-color: var(--rule-strong);
-  color: var(--state-returned);
+  color: var(--danger);
 }
 
 .button.danger:hover,
 button.danger:hover {
-  background: var(--state-returned);
-  border-color: var(--state-returned);
+  background: var(--danger);
+  border-color: var(--danger);
   color: var(--accent-ink);
 }
 
@@ -123,9 +123,20 @@ button.danger:hover {
   margin-block-end: var(--space-4);
 }
 
+/* .field is the intended wrapper, but four other people are going to write
+   forms. These two rules mean a bare label and input still stack instead of
+   running into each other on one line. */
 label {
+  display: block;
   font-size: var(--text-sm);
   font-weight: 600;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  display: block;
+  width: 100%;
 }
 
 input,
@@ -135,7 +146,7 @@ textarea {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius-sm);
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   color: inherit;
   font: inherit;
 }
@@ -153,7 +164,7 @@ textarea:hover { border-color: var(--ink-faint); }
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--paper-sunk);
+  background: var(--surface-sunk);
   color: var(--ink-faint);
   cursor: not-allowed;
 }
@@ -162,7 +173,7 @@ textarea:disabled {
    reader announces can never disagree. */
 input[aria-invalid='true'],
 select[aria-invalid='true'],
-textarea[aria-invalid='true'] { border-color: var(--state-returned); }
+textarea[aria-invalid='true'] { border-color: var(--danger); }
 
 .hint {
   color: var(--ink-soft);
@@ -171,7 +182,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
 
 .problem {
   margin: 0;
-  color: var(--state-returned);
+  color: var(--danger);
   font-size: var(--text-sm);
 }
 
@@ -212,7 +223,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
 .card .thumb {
   aspect-ratio: 4 / 3;
   border-radius: var(--radius-sm);
-  background: var(--paper-sunk);
+  background: var(--surface-sunk);
   object-fit: cover;
 }
 
@@ -278,7 +289,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
   text-transform: none;
 }
 
-.rows tbody tr:hover { background: var(--paper-sunk); }
+.rows tbody tr:hover { background: var(--surface-sunk); }
 
 /* A table cannot reflow, so on a narrow screen it scrolls inside its own box
    rather than pushing the page sideways. */
@@ -293,7 +304,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
   padding: var(--space-4);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-  background: var(--paper-raised);
+  background: var(--surface-raised);
 }
 
 .aside-card h2 {
@@ -310,7 +321,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
   border: 1px solid var(--rule);
   border-inline-start: 3px solid var(--ink-faint);
   border-radius: var(--radius-sm);
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   font-size: var(--text-sm);
 }
 
@@ -343,7 +354,7 @@ textarea[aria-invalid='true'] { border-color: var(--state-returned); }
 
 .skeleton {
   border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--paper-sunk) 25%, var(--rule) 37%, var(--paper-sunk) 63%);
+  background: linear-gradient(90deg, var(--surface-sunk) 25%, var(--rule) 37%, var(--surface-sunk) 63%);
   background-size: 400% 100%;
   animation: shimmer 1.4s ease infinite;
 }
@@ -384,11 +395,11 @@ dialog {
   padding: var(--space-6);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius);
-  background: var(--paper-raised);
+  background: var(--surface-raised);
   color: inherit;
 }
 
-dialog::backdrop { background: rgba(22, 22, 26, 0.45); }
+dialog::backdrop { background: var(--backdrop); }
 
 /* Utilities --------------------------------------------------------------- */
 
@@ -457,7 +468,80 @@ dialog::backdrop { background: rgba(22, 22, 26, 0.45); }
 code {
   padding: 0.1em 0.35em;
   border-radius: var(--radius-sm);
-  background: var(--paper-sunk);
+  background: var(--surface-sunk);
   font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   font-size: 0.875em;
+}
+
+/* Theme toggle ------------------------------------------------------------ */
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: auto;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--ink-soft);
+}
+
+.icon-button:hover {
+  background: var(--surface-sunk);
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+/* Nothing here works without site.js, so the button stays out of the page until
+   the inline script in the head has added .js to the root. */
+.theme-toggle { display: none; }
+.js .theme-toggle { display: inline-flex; }
+
+/* Which icon shows is worked out in CSS rather than in script, so it is right
+   on the first frame instead of settling a moment later. The button always
+   shows the mode it will switch to. */
+.moon { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .sun { display: none; }
+  :root:not([data-theme='light']) .moon { display: block; }
+}
+
+:root[data-theme='dark'] .sun { display: none; }
+:root[data-theme='dark'] .moon { display: block; }
+:root[data-theme='light'] .sun { display: block; }
+:root[data-theme='light'] .moon { display: none; }
+
+/* Logo --------------------------------------------------------------------
+
+   Same approach as the theme icons: both files sit in the markup and CSS shows
+   one. A <picture> element can follow the system preference but not the
+   toggle, and the toggle has to win. */
+
+.logo {
+  display: block;
+  aspect-ratio: 640 / 158;
+  background: center / contain no-repeat url('/images/logo.webp');
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logo { background-image: url('/images/logo-dark.webp'); }
+}
+
+:root[data-theme='dark'] .logo { background-image: url('/images/logo-dark.webp'); }
+:root[data-theme='light'] .logo { background-image: url('/images/logo.webp'); }
+
+.signin-logo {
+  margin-block-end: var(--space-5);
+}
+
+.signin-logo .logo {
+  width: 13rem;
+}
+
+@media (max-width: 40rem) {
+  .wordmark .logo { width: 8.5rem; }
 }

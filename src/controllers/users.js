@@ -44,13 +44,10 @@ async function create(req, res) {
   res.status(201).location(`/api/users/${user._id}`).json(publicUser(user));
 }
 
+// The account is already loaded and already cleared by the route. What is left
+// here is only the change itself.
 async function update(req, res) {
-  const user = await User.findById(req.params.id);
-  if (!user) throw new HttpError(404, 'No such user');
-
-  // Demoting the only administrator would lock the system out of itself.
-  if (user.isAdmin) throw new HttpError(403, 'The administrator account cannot be changed here');
-
+  const user = req.target;
   const { name, role, password } = readBody(req.body);
 
   if (name) user.name = name;
@@ -67,9 +64,7 @@ async function update(req, res) {
 }
 
 async function remove(req, res) {
-  const user = await User.findById(req.params.id);
-  if (!user) throw new HttpError(404, 'No such user');
-  if (user.isAdmin) throw new HttpError(403, 'The administrator account cannot be deleted');
+  const user = req.target;
 
   await user.deleteOne();
   logger.info('user deleted', { by: req.user.username, username: user.username });

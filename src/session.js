@@ -24,6 +24,9 @@ const COOKIE_OPTIONS = Object.freeze({
   // Not sent on requests that arrive from another site.
   sameSite: 'lax',
 
+  // Only sent over HTTPS once NODE_ENV is production. Worth knowing before
+  // anyone sets that on a plain http:// host and wonders why signing in
+  // silently stops working.
   secure: config.isProduction
 });
 
