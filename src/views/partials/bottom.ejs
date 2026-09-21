@@ -1,5 +1,17 @@
   </main>
   <footer>The Daily Web &middot; פרויקט גמר בפיתוח אפליקציות אינטרנטיות</footer>
+
+  <!-- One dialog for the whole site, opened through site.confirm(). A native
+       <dialog> traps focus, closes on Escape and blocks the page behind it on
+       its own, which is most of what an alert library is for. -->
+  <dialog id="ask" aria-labelledby="ask-title">
+    <h2 id="ask-title"></h2>
+    <p id="ask-body"></p>
+    <div class="actions">
+      <button type="button" id="ask-yes"></button>
+      <button type="button" class="secondary" id="ask-no">ביטול</button>
+    </div>
+  </dialog>
   <script src="/js/site.js" defer></script>
   <% if (typeof script !== 'undefined') { %><script src="<%= script %>" defer></script><% } %>
 </body>

@@ -15,9 +15,9 @@
 
 <section class="panel">
   <h2>צבעים</h2>
-  <p class="muted">שמות סמנטיים, לא ערכים. <code>var(--ink)</code> ולא <code>#16161a</code>.</p>
+  <p class="muted">שמות סמנטיים, לא ערכים. <code>var(--ink)</code> ולא <code>#0f172a</code>. הריבועים משתנים לבד בין בהיר לכהה.</p>
   <div class="swatches">
-    <% const inks = ['ink', 'ink-soft', 'ink-faint', 'paper', 'paper-raised', 'paper-sunk', 'rule', 'rule-strong', 'accent']; %>
+    <% const inks = ['ink', 'ink-soft', 'ink-faint', 'bg', 'surface', 'surface-sunk', 'surface-raised', 'rule', 'rule-strong', 'accent', 'accent-hover', 'accent-soft', 'danger']; %>
     <% inks.forEach((name) => { %>
       <div class="swatch">
         <span style="background: var(--<%= name %>)"></span>
@@ -193,6 +193,25 @@
 </section>
 
 <section class="panel">
+  <h2>אישור לפעולה הרסנית</h2>
+  <p class="muted">
+    <code>window.confirm</code> לא ניתן לעיצוב, לא ניתן לתרגום, ונראה שונה בכל
+    מערכת הפעלה. במקומו יש <code>site.confirm</code>, שמחזיר Promise ונקרא
+    בדיוק אותו דבר.
+  </p>
+
+  <div class="actions">
+    <button type="button" class="danger" id="sg-ask">נסו: מחיקה</button>
+  </div>
+
+  <p class="hint">
+    <code>const sure = await site.confirm({ heading, message, action, danger })</code>
+    — מחזיר <code>true</code> או <code>false</code>. Escape והרקע שניהם מבטלים,
+    והפוקוס נכנס לכפתור הבטוח.
+  </p>
+</section>
+
+<section class="panel">
   <h2>מעטפות פריסה</h2>
   <dl class="shells">
     <dt><code>.with-aside</code></dt>
@@ -205,5 +224,17 @@
     <dd>קופסה צרה וממורכזת. התחברות.</dd>
   </dl>
 </section>
+
+<script>
+  document.getElementById('sg-ask').addEventListener('click', async () => {
+    const sure = await site.confirm({
+      heading: 'מחיקת כתבה',
+      message: 'הכתבה תימחק לצמיתות, יחד עם התגובות ונתוני הצפייה שלה.',
+      action: 'מחיקה',
+      danger: true
+    });
+    window.alert(sure ? 'החזיר true' : 'החזיר false');
+  });
+</script>
 
 <%- include('partials/bottom') %>

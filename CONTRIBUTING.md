@@ -43,6 +43,15 @@ those rather than inventing a fifth kind of button.
     public/css/base.css        reset, typography, the page frame
     public/css/components.css  the pieces screens are built from
 
+Two things live in `public/js/site.js` and are shared:
+
+- `site.confirm({ heading, message, action, danger })` returns a promise of true
+  or false. Use it instead of `window.confirm`, which cannot be styled or
+  translated. It is a native `<dialog>`, so focus trapping and Escape are free.
+- **Wrap your page script in `(() => { ... })()`.** Classic scripts share one
+  global scope, so two files both declaring `const form` is a syntax error that
+  takes the whole page down.
+
 **A screen that needs a value not in `tokens.css` adds it there first.** Five
 people picking their own greys is how a project ends up looking like five
 projects.

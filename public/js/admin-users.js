@@ -1,3 +1,5 @@
+// Wrapped so that these names belong to this screen only. See site.js.
+(() => {
 const rows = document.getElementById('rows');
 const form = document.getElementById('create');
 const problem = document.getElementById('problem');
@@ -7,7 +9,10 @@ const ROLES = { reporter: 'כתב', editor: 'עורך' };
 
 // One message showing at a time. Both are cleared before every action, so a
 // success line can never sit above a failure that came after it.
+let fade;
+
 const clear = () => {
+  clearTimeout(fade);
   problem.hidden = true;
   created.hidden = true;
 };
@@ -18,10 +23,16 @@ const say = (text) => {
   problem.hidden = false;
 };
 
+// Success takes itself away after a few seconds; a failure stays until the next
+// action, because it is asking for something to be done about it.
+//
+// clear() cancels the pending hide, so two creations in a row restart the five
+// seconds rather than the first one cutting the second one short.
 const cheer = (text) => {
   clear();
   created.textContent = text;
   created.hidden = false;
+  fade = setTimeout(() => { created.hidden = true; }, 5000);
 };
 
 // The server answers in English, which is right for the log but not for the
@@ -75,7 +86,14 @@ async function load() {
 }
 
 async function destroy(user) {
-  if (!window.confirm(`למחוק את ${user.username}?`)) return;
+  const sure = await site.confirm({
+    heading: 'מחיקת חשבון',
+    message: `החשבון ${user.username} יימחק לצמיתות. לא ניתן לבטל את הפעולה.`,
+    action: 'מחיקה',
+    danger: true
+  });
+
+  if (!sure) return;
   clear();
 
   const response = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
@@ -119,3 +137,4 @@ form.addEventListener('submit', async (event) => {
 });
 
 load();
+})();
