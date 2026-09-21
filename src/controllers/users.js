@@ -11,9 +11,20 @@ const readBody = (body) => ({
   role: String(body.role || '')
 });
 
+// What a user looks like on the way out. Sending the document instead would ship
+// __v and the timestamps, and _id where docs/api.md promises id, which is what
+// the client's user.id || user._id was quietly working around.
+const publicUser = (user) => ({
+  id: String(user._id),
+  username: user.username,
+  name: user.name,
+  role: user.role,
+  isAdmin: user.isAdmin
+});
+
 async function list(req, res) {
   const users = await User.find().sort({ isAdmin: -1, username: 1 });
-  res.json(users);
+  res.json(users.map(publicUser));
 }
 
 async function create(req, res) {
@@ -30,7 +41,7 @@ async function create(req, res) {
   const user = await User.create({ username, password, name, role });
   logger.info('user created', { by: req.user.username, username, role });
 
-  res.status(201).location(`/api/users/${user._id}`).json(user);
+  res.status(201).location(`/api/users/${user._id}`).json(publicUser(user));
 }
 
 async function update(req, res) {
@@ -52,7 +63,7 @@ async function update(req, res) {
   await user.save();
   logger.info('user updated', { by: req.user.username, username: user.username });
 
-  res.json(user);
+  res.json(publicUser(user));
 }
 
 async function remove(req, res) {

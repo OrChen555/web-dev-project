@@ -131,15 +131,19 @@ powers.
 ## Users — person 1
 
 ```
-GET    /api/users            -> 200 [ { id, username, name, role } ]
+GET    /api/users            -> 200 [ { id, username, name, role, isAdmin } ]
 POST   /api/users            { username, password, name, role } -> 201
 PATCH  /api/users/:id        { name?, role? }                   -> 200
 DELETE /api/users/:id                                           -> 204
 ```
 
-Administrator only. `isAdmin` is ignored if it appears in a body: the one
+Administrator only. `isAdmin` is read-only: it is reported so the screen knows
+which row is the administrator, and ignored if it appears in a body. The one
 administrator is created at startup from the environment and cannot be made,
 deleted or demoted through the API.
+
+A password is at least 8 characters, checked in the model so that every route
+that sets one is covered.
 
 ## Articles — person 1 builds these, persons 2, 4 and 5 read them
 

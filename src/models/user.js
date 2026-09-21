@@ -1,9 +1,15 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const { HttpError } = require('../errors');
+
 // Two roles, not the three the requirements name, because a guest is not a
 // record. It is the absence of a session, and there is nothing to store.
 const ROLES = ['reporter', 'editor'];
+
+// Short enough that nobody is locked out of the demo, long enough that a
+// one character password cannot be given to an editor.
+const MIN_PASSWORD = 8;
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -26,6 +32,14 @@ userSchema.virtual('password').set(function (plain) {
 
 userSchema.pre('save', async function () {
   if (!this.isModified('passwordHash')) return;
+
+  // The plain password is still in the field at this point, so this is the last
+  // moment it can be measured. Every route that sets one reaches save, which is
+  // why the rule is here and not in whichever controller happened to be first.
+  if (this.passwordHash.length < MIN_PASSWORD) {
+    throw new HttpError(400, `A password needs at least ${MIN_PASSWORD} characters`);
+  }
+
   this.passwordHash = await bcrypt.hash(this.passwordHash, 10);
 });
 
@@ -47,3 +61,4 @@ userSchema.set('toJSON', {
 
 module.exports = mongoose.model('User', userSchema);
 module.exports.ROLES = ROLES;
+module.exports.MIN_PASSWORD = MIN_PASSWORD;

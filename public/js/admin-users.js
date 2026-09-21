@@ -50,7 +50,7 @@ async function load() {
 async function destroy(user) {
   if (!window.confirm(`למחוק את ${user.username}?`)) return;
 
-  const response = await fetch(`/api/users/${user.id || user._id}`, { method: 'DELETE' });
+  const response = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
   if (response.ok) return load();
 
   const body = await response.json().catch(() => ({}));
