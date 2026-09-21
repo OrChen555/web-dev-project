@@ -21,24 +21,35 @@
   <h2>חשבון חדש</h2>
 
   <form id="create" novalidate>
-    <label for="username">שם משתמש</label>
-    <input id="username" name="username" autocomplete="off" required>
+    <div class="field">
+      <label for="username">שם משתמש</label>
+      <input id="username" name="username" autocomplete="off" required>
+    </div>
 
-    <label for="name">שם מלא</label>
-    <input id="name" name="name" autocomplete="off" required>
+    <div class="field">
+      <label for="name">שם מלא</label>
+      <input id="name" name="name" autocomplete="off" required>
+    </div>
 
-    <label for="password">סיסמה</label>
-    <input id="password" name="password" type="password" autocomplete="new-password" required>
+    <div class="field">
+      <label for="password">סיסמה</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" required>
+      <span class="hint">לפחות שמונה תווים.</span>
+    </div>
 
-    <label for="role">תפקיד</label>
-    <select id="role" name="role">
-      <option value="reporter">כתב</option>
-      <option value="editor">עורך</option>
-    </select>
+    <div class="field">
+      <label for="role">תפקיד</label>
+      <select id="role" name="role">
+        <option value="reporter">כתב</option>
+        <option value="editor">עורך</option>
+      </select>
+    </div>
 
     <p class="problem" id="problem" hidden></p>
 
-    <button type="submit">יצירה</button>
+    <div class="actions">
+      <button type="submit">יצירה</button>
+    </div>
   </form>
 </section>
 

@@ -1,37 +1,135 @@
 /* Every value the rest of the stylesheets are allowed to use. A screen that
    needs a colour or a gap that is not here should add it here first, so that
-   five people building five areas end up with one design rather than five. */
+   five people building five areas end up with one design rather than five.
+
+   The colours are written three times: light, the same set again for a reader
+   whose system is dark, and once more for whoever picked a mode by hand. The
+   third copy is what lets the toggle win in both directions. */
 
 :root {
-  /* Ink and paper. A newspaper is dark type on a warm light ground, so the
-     greys are warm rather than blue. Every one of these was checked against the
-     surface it sits on and clears 4.5:1, which is what small text needs. */
-  --ink: #16161a;
-  --ink-soft: #55555f;
-  --ink-faint: #6e6e78;
-  --paper: #faf8f4;
-  --paper-raised: #ffffff;
-  --paper-sunk: #f2efe9;
-  --rule: #ddd9d1;
-  --rule-strong: #c4bfb4;
+  color-scheme: light;
 
-  /* One accent, used for the masthead, links and the primary action. More than
-     one accent and nothing stands out. */
-  --accent: #8c1c13;
-  --accent-soft: #f4e9e7;
+  --bg: #ffffff;
+  --surface: #f8fafc;
+  --surface-sunk: #f1f5f9;
+  --surface-raised: #ffffff;
+
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-faint: #5b6b7c;
+
+  --rule: #e2e8f0;
+  --rule-strong: #cbd5e1;
+
+  /* The brand blue is #0285ff, and that is exactly what dark mode uses. On a
+     white ground it only reaches 3.62:1, which is under the 4.5 that text and
+     button labels need, so light mode runs two shades darker. The two are 46
+     apart in RGB out of a possible 441: side by side you would struggle. */
+  --accent: #0270d6;
+  --accent-hover: #0160b3;
+  --accent-active: #0152a0;
+  --accent-soft: #e6f2ff;
   --accent-ink: #ffffff;
 
-  /* The four states an article can be in. Each carries a text label as well,
-     because colour on its own is unreadable to a good number of people. */
-  --state-draft: #636369;
-  --state-draft-bg: #eeece8;
-  --state-pending: #8a5a00;
-  --state-pending-bg: #fbf0dc;
-  --state-returned: #9a2318;
-  --state-returned-bg: #fbe9e7;
-  --state-published: #1f6b3f;
-  --state-published-bg: #e6f2ea;
+  --state-draft: #475569;
+  --state-draft-bg: #f1f5f9;
+  --state-pending: #92400e;
+  --state-pending-bg: #fef3c7;
+  --state-returned: #9f1239;
+  --state-returned-bg: #ffe4e6;
+  --state-published: #166534;
+  --state-published-bg: #dcfce7;
 
+  --danger: #be123c;
+
+  --shadow-raised: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-lifted: 0 4px 12px rgba(15, 23, 42, 0.08), 0 12px 32px rgba(15, 23, 42, 0.06);
+  --backdrop: rgba(15, 23, 42, 0.5);
+}
+
+/* The :not() is the point: a reader who chose light by hand keeps light even
+   on a dark system. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #0b1120;
+    --surface: #131a2b;
+    --surface-sunk: #1b2337;
+    --surface-raised: #161e30;
+
+    --ink: #e8edf7;
+    --ink-soft: #a9b4c9;
+    --ink-faint: #93a0b8;
+
+    --rule: #232c41;
+    --rule-strong: #35405a;
+
+    --accent: #0285ff;
+    --accent-hover: #3d9fff;
+    --accent-active: #6bb7ff;
+    --accent-soft: #0d2438;
+    --accent-ink: #0b1120;
+
+    --state-draft: #a9b4c9;
+    --state-draft-bg: #1b2337;
+    --state-pending: #fbbf47;
+    --state-pending-bg: #382c12;
+    --state-returned: #fb8697;
+    --state-returned-bg: #3a1620;
+    --state-published: #6ee79f;
+    --state-published-bg: #10301f;
+
+    --danger: #fb7185;
+
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lifted: 0 4px 12px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.35);
+    --backdrop: rgba(3, 7, 18, 0.72);
+  }
+}
+
+/* And once more, so that dark chosen by hand works on a light system. Same
+   values; only the selector differs. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b1120;
+  --surface: #131a2b;
+  --surface-sunk: #1b2337;
+  --surface-raised: #161e30;
+
+  --ink: #e8edf7;
+  --ink-soft: #a9b4c9;
+  --ink-faint: #93a0b8;
+
+  --rule: #232c41;
+  --rule-strong: #35405a;
+
+  --accent: #0285ff;
+  --accent-hover: #3d9fff;
+  --accent-active: #6bb7ff;
+  --accent-soft: #0d2438;
+  --accent-ink: #0b1120;
+
+  --state-draft: #a9b4c9;
+  --state-draft-bg: #1b2337;
+  --state-pending: #fbbf47;
+  --state-pending-bg: #382c12;
+  --state-returned: #fb8697;
+  --state-returned-bg: #3a1620;
+  --state-published: #6ee79f;
+  --state-published-bg: #10301f;
+
+  --danger: #fb7185;
+
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lifted: 0 4px 12px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.35);
+  --backdrop: rgba(3, 7, 18, 0.72);
+}
+
+/* Everything below is the same whichever mode is on. */
+
+:root {
   /* Spacing, on a four pixel rhythm. Anything between these is a decision
      nobody made. */
   --space-1: 0.25rem;
@@ -43,9 +141,9 @@
   --space-7: 3rem;
   --space-8: 4rem;
 
-  /* Two families: a Hebrew newspaper serif for headlines, a humanist sans for
-     everything a person has to operate. */
-  --font-display: 'Frank Ruhl Libre', 'Times New Roman', serif;
+  /* Rubik carries the headlines, Assistant everything a person reads or
+     operates. Both were drawn for Hebrew rather than fitted to it afterwards. */
+  --font-display: 'Rubik', 'Assistant', system-ui, sans-serif;
   --font-ui: 'Assistant', 'Segoe UI', system-ui, sans-serif;
 
   --text-xs: 0.75rem;
@@ -57,19 +155,19 @@
   --text-3xl: 2.25rem;
 
   --leading-tight: 1.2;
-  --leading-normal: 1.5;
-  --leading-loose: 1.75;
+  --leading-normal: 1.55;
+  --leading-loose: 1.8;
 
-  --radius-sm: 3px;
-  --radius: 5px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
-
-  --shadow-raised: 0 1px 2px rgba(22, 22, 26, 0.06), 0 2px 8px rgba(22, 22, 26, 0.04);
-  --shadow-lifted: 0 4px 12px rgba(22, 22, 26, 0.1), 0 12px 32px rgba(22, 22, 26, 0.08);
 
   /* Line length for reading, and the width of the page frame. */
   --measure: 38rem;
   --shell: 70rem;
 
   --tap: 2.75rem;
+
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
 }
