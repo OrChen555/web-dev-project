@@ -44,9 +44,17 @@ const requireAdmin = (req, res, next) => {
 // administrator is created at startup and cannot be edited or removed through
 // the API. It reads req.target, so it goes after load(User) in the chain.
 const protectAdminAccount = (req, res, next) => {
-  if (req.target && req.target.isAdmin) {
+  // No target means this was put before load(User) instead of after it. Carrying
+  // on would leave the route unguarded and say nothing about it, so it fails as
+  // the wiring mistake it is: a plain Error, logged with its stack, not a 4xx.
+  if (!req.target) {
+    return next(new Error('protectAdminAccount runs before load(User); check the route order'));
+  }
+
+  if (req.target.isAdmin) {
     return next(new HttpError(403, 'The administrator account cannot be changed through the API'));
   }
+
   next();
 };
 
