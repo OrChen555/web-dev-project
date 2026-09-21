@@ -79,7 +79,7 @@ async function write(rows, editor) {
       reporter: row.by._id,
       category: row.category,
       draft: row.draft || null,
-      draftStatus: row.status || 'draft'
+      draftStatus: row.status || null
     });
 
     if (row.live) {
@@ -128,14 +128,20 @@ async function traffic(articles) {
   for (const article of live) {
     let total = 0;
 
-    for (let hour = 0; hour < 48; hour++) {
-      const bucket = ViewBucket.windowFor(new Date(Date.now() - hour * 60 * 60 * 1000));
+    // Steps of fifteen minutes, which is the window viewBucket actually uses.
+    // Each one is written as two separate increments so the upsert-then-add
+    // path is exercised rather than only the first insert.
+    for (let slot = 0; slot < 2 * 24 * 4; slot++) {
+      const bucket = ViewBucket.windowFor(new Date(Date.now() - slot * 15 * 60 * 1000));
 
-      // A visible lift over the last twelve hours, so the chart has something to
-      // show rather than a flat line.
-      const count = hour < 12 ? 30 + Math.floor(Math.random() * 20) : 5 + Math.floor(Math.random() * 8);
+      // A visible lift over the last twelve hours, so the chart has something
+      // to show rather than a flat line.
+      const count = slot < 12 * 4 ? 8 + Math.floor(Math.random() * 6) : 1 + Math.floor(Math.random() * 3);
+      const half = Math.ceil(count / 2);
 
-      await ViewBucket.updateOne({ article: article._id, bucket }, { $inc: { count } }, { upsert: true });
+      await ViewBucket.updateOne({ article: article._id, bucket }, { $inc: { count: half } }, { upsert: true });
+      await ViewBucket.updateOne({ article: article._id, bucket }, { $inc: { count: count - half } }, { upsert: true });
+
       total += count;
       buckets++;
     }
@@ -154,7 +160,7 @@ async function filler(count, reporter) {
     category: Article.CATEGORIES[i % Article.CATEGORIES.length],
     published: copy('כתבת מילוי ' + (i + 1), 'נועדה למדידת אינדקסים בלבד'),
     publishedAt: new Date(Date.now() - i * 60 * 1000),
-    draftStatus: 'draft',
+    draftStatus: null,
     viewCount: Math.floor(Math.random() * 5000)
   }));
 
@@ -168,6 +174,16 @@ async function filler(count, reporter) {
 async function run() {
   const asked = process.argv.find((a) => a.startsWith('--bulk='));
   const extra = asked ? Number(asked.split('=')[1]) : 0;
+
+  // This empties every collection, so it refuses to run against anything that
+  // is not obviously a local database. One stale .env should not be able to
+  // wipe something shared.
+  const local = /\/\/(localhost|127\.0\.0\.1)[:/]/.test(config.mongoUri);
+  if (!local && !process.argv.includes('--force')) {
+    console.error('Refusing to wipe a database that is not local: ' + config.mongoUri.replace(/\/\/.*@/, '//'));
+    console.error('Pass --force if that is really what you want.');
+    process.exit(1);
+  }
 
   await db.connect(config.mongoUri);
 
@@ -185,7 +201,7 @@ async function run() {
   console.log('users      4     admin, two reporters, one editor');
   console.log('articles   ' + articles.length + '    every state, including one published with an update waiting');
   console.log('comments   ' + comments + '     one published article deliberately left with none');
-  console.log('views      ' + buckets + '   fifteen minute buckets over two days');
+  console.log('views      ' + buckets + '  fifteen minute buckets over two days');
   if (padding) console.log('filler     ' + padding + '  extra articles, for index measurements only');
   console.log('password   every account: ' + PASSWORD);
 

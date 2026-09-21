@@ -32,7 +32,10 @@ const articleSchema = new mongoose.Schema({
   publishedAt: { type: Date, default: null },
 
   draft: { type: versionSchema, default: null },
-  draftStatus: { type: String, enum: DRAFT_STATUSES, default: 'draft' },
+  // Null whenever there is no working copy. The enum has no value for "nothing
+  // in progress", and leaving it at 'draft' put every published article into
+  // the editor's queue index looking like a draft.
+  draftStatus: { type: String, enum: [...DRAFT_STATUSES, null], default: null },
 
   editorNote: { type: noteSchema, default: null },
 
