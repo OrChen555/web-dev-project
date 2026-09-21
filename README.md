@@ -5,9 +5,13 @@ a news site. Final project for the web applications course.
 
 ## Running it
 
-**What you need:** Node 20 or newer, and a MongoDB to point at. The compose file
+**What you need:** Node 22 or newer, and a MongoDB to point at. The compose file
 here starts one, or set `MONGODB_URI` to a MongoDB you already have and skip
 Docker entirely.
+
+22 and not 20: `connect-mongo` 6 ships as an ES module, and `require()` of one
+only works from Node 22 onwards. `package.json` says so under `engines`, so npm
+will warn rather than let it fail at startup.
 
 ```bash
 npm install

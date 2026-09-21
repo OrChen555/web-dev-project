@@ -1,4 +1,5 @@
 const { HttpError } = require('../errors');
+const { COOKIE_NAME, COOKIE_OPTIONS } = require('../session');
 const logger = require('../logger');
 const User = require('../models/user');
 
@@ -38,7 +39,10 @@ async function signOut(req, res) {
   const who = req.user ? req.user.username : null;
 
   await new Promise((resolve) => req.session.destroy(() => resolve()));
-  res.clearCookie('connect.sid');
+  // Name and attributes both come from session.js. A clearCookie whose path or
+  // sameSite differs from the original sets a second cookie instead of removing
+  // the first, and the session id stays in the browser.
+  res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
 
   if (who) logger.info('signed out', { username: who });
   res.status(204).end();

@@ -3,8 +3,9 @@ const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
+const config = require('./config');
 const routes = require('./routes');
-const session = require('./session');
+const { middleware: session } = require('./session');
 const visitor = require('./middlewares/visitor');
 const asyncHandler = require('./middlewares/asyncHandler');
 const { loadUser } = require('./middlewares/auth');
@@ -24,7 +25,9 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cookieParser());
+// The same secret the session is signed with. Without one here, res.cookie's
+// signed option is silently unavailable and visitor ids would be forgeable.
+app.use(cookieParser(config.sessionSecret));
 app.use(session);
 app.use(visitor);
 
