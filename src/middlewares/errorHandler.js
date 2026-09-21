@@ -32,6 +32,12 @@ function errorHandler(err, req, res, next) {
 
   // The trailing slash matters: without it /apiary would answer with JSON.
   if (req.originalUrl.startsWith('/api/')) return res.status(status).json({ error: message });
+
+  // 401 on a page means nobody is signed in, and the useful answer to that is the
+  // login screen rather than an error page saying so. Doing it here rather than
+  // in a second guard means every page route added later gets it too.
+  if (status === 401) return res.redirect('/login');
+
   res.status(status).render('error', { title: String(status), status, message });
 }
 
