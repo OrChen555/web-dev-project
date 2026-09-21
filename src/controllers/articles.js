@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
 
@@ -28,18 +30,48 @@ const SORTS = {
 
 const encode = (value, id) => Buffer.from(JSON.stringify([value, id])).toString('base64url');
 
-function decode(cursor) {
+// A cursor comes back from us, but it arrives in a query string like anything
+// else, so it is read as something a stranger wrote. Parsing it only proves it
+// was base64 and JSON: without a shape check an id of { "$gt": "" } lands in the
+// query as an operator, and a sort value that is not a date reaches mongo as an
+// Invalid Date and quietly matches nothing.
+function decode(cursor, field) {
+  let value;
+  let id;
+
   try {
-    const [value, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
-    return { value, id };
+    [value, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
   } catch (err) {
     throw new HttpError(400, 'That is not a usable cursor');
   }
+
+  if (typeof id !== 'string' || !mongoose.isValidObjectId(id)) {
+    throw new HttpError(400, 'That is not a usable cursor');
+  }
+
+  if (field === 'publishedAt') {
+    // A string, because that is what encode() produces for a Date and because
+    // new Date() is too forgiving to lean on: null and true both come out as
+    // 1970 rather than as an Invalid Date, and would page from the wrong end.
+    const at = typeof value === 'string' ? new Date(value) : new Date(NaN);
+    if (Number.isNaN(at.getTime())) throw new HttpError(400, 'That is not a usable cursor');
+    return { value: at, id };
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new HttpError(400, 'That is not a usable cursor');
+  }
+
+  return { value, id };
 }
 
 async function list(req, res) {
   const sort = SORTS[req.query.sort] || SORTS.recent;
-  const limit = Math.min(Number(req.query.limit) || 20, MAX_LIMIT);
+  // Anything that is not a whole number above zero falls back to the default.
+  // Math.min alone let a negative through, and mongo reads .limit(-4) as "at most
+  // none", so the feed came back empty and looked broken.
+  const asked = Number(req.query.limit);
+  const limit = Number.isInteger(asked) && asked > 0 ? Math.min(asked, MAX_LIMIT) : 20;
 
   // Published only. A draft is not a thing the public can reach by any query.
   const where = { published: { $ne: null } };
@@ -48,8 +80,7 @@ async function list(req, res) {
   if (req.query.q) where.$text = { $search: String(req.query.q) };
 
   if (req.query.after) {
-    const { value, id } = decode(String(req.query.after));
-    const at = sort.field === 'publishedAt' ? new Date(value) : value;
+    const { value: at, id } = decode(String(req.query.after), sort.field);
 
     // Strictly past the last row: either the sort value is lower, or it ties
     // and the id is lower. Without the tie-break, articles published in the
