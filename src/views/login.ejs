@@ -1,0 +1,26 @@
+<%- include('partials/top') %>
+
+<section class="panel narrow">
+  <h1>כניסה למערכת</h1>
+  <p class="lede">לכתבים ולעורכים בלבד. חשבונות נפתחים על ידי מנהל המערכת.</p>
+
+  <form id="login" novalidate>
+    <div class="field">
+      <label for="username">שם משתמש</label>
+      <input id="username" name="username" autocomplete="username" required autofocus>
+    </div>
+
+    <div class="field">
+      <label for="password">סיסמה</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+
+    <p class="problem" id="problem" hidden></p>
+
+    <div class="actions">
+      <button type="submit">כניסה</button>
+    </div>
+  </form>
+</section>
+
+<%- include('partials/bottom') %>

@@ -1,0 +1,209 @@
+<%- include('partials/top') %>
+
+<div class="reading">
+  <h1>מדריך הרכיבים</h1>
+  <p class="lede">
+    כל מה שמותר להשתמש בו. מסך שצריך צבע או מרווח שאין כאן — מוסיפים אותו
+    ל־<code>tokens.css</code> קודם, כדי שחמישה אנשים שבונים חמישה אזורים
+    יגיעו לעיצוב אחד ולא לחמישה.
+  </p>
+  <p class="muted">
+    הקבצים: <code>tokens.css</code> הערכים · <code>base.css</code> המעטפת
+    והטיפוגרפיה · <code>components.css</code> הרכיבים שלמטה.
+  </p>
+</div>
+
+<section class="panel">
+  <h2>צבעים</h2>
+  <p class="muted">שמות סמנטיים, לא ערכים. <code>var(--ink)</code> ולא <code>#16161a</code>.</p>
+  <div class="swatches">
+    <% const inks = ['ink', 'ink-soft', 'ink-faint', 'paper', 'paper-raised', 'paper-sunk', 'rule', 'rule-strong', 'accent']; %>
+    <% inks.forEach((name) => { %>
+      <div class="swatch">
+        <span style="background: var(--<%= name %>)"></span>
+        <code>--<%= name %></code>
+      </div>
+    <% }); %>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>טיפוגרפיה</h2>
+  <p class="muted">שתי משפחות: <code>--font-display</code> לכותרות, <code>--font-ui</code> לכל מה שמפעילים.</p>
+  <h1>כותרת ראשית</h1>
+  <h2>כותרת משנית</h2>
+  <h3>כותרת שלישית</h3>
+  <p>פסקת גוף רגילה, בגופן הממשק.</p>
+  <p class="muted">טקסט משני, <code>.muted</code>.</p>
+  <p class="hint">רמז קטן מתחת לשדה, <code>.hint</code>.</p>
+</section>
+
+<section class="panel">
+  <h2>כפתורים</h2>
+  <p class="muted">לכל אחד חמישה מצבים. נסו tab כדי לראות את טבעת הפוקוס.</p>
+  <div class="row">
+    <button type="button">פעולה ראשית</button>
+    <button type="button" class="secondary">פעולה משנית</button>
+    <button type="button" class="quiet">פעולה שקטה</button>
+    <button type="button" class="danger">מחיקה</button>
+    <button type="button" disabled>מושבת</button>
+  </div>
+  <p class="hint"><code>button</code> · <code>.secondary</code> · <code>.quiet</code> · <code>.danger</code> · <code>disabled</code></p>
+</section>
+
+<section class="panel">
+  <h2>שדות טופס</h2>
+  <div class="field">
+    <label for="sg-a">שדה רגיל</label>
+    <input id="sg-a" value="ערך">
+  </div>
+  <div class="field">
+    <label for="sg-b">שדה עם רמז</label>
+    <input id="sg-b">
+    <span class="hint">הסבר קצר שעוזר למלא נכון.</span>
+  </div>
+  <div class="field">
+    <label for="sg-c">שדה שגוי</label>
+    <input id="sg-c" aria-invalid="true" value="לא תקין">
+    <span class="problem">חובה למלא את השדה הזה.</span>
+  </div>
+  <div class="field">
+    <label for="sg-d">בחירה</label>
+    <select id="sg-d"><option>חדשות</option><option>ספורט</option></select>
+  </div>
+  <div class="field">
+    <label for="sg-e">טקסט ארוך</label>
+    <textarea id="sg-e">גוף הכתבה</textarea>
+  </div>
+  <div class="field">
+    <label for="sg-f">מושבת</label>
+    <input id="sg-f" value="לא ניתן לעריכה" disabled>
+  </div>
+  <p class="hint">עטפו כל שדה ב־<code>.field</code>. שגיאה מסומנת ב־<code>aria-invalid</code>, לא במחלקה — כדי שהעיצוב ומה שקורא מסך מכריז לא יוכלו לסתור זה את זה.</p>
+</section>
+
+<section class="panel">
+  <h2>מצב כתבה</h2>
+  <p class="muted">ארבעת המצבים. <strong>כל אחד נושא את המילים שלו</strong> — צבע לבדו לא קריא לחלק ניכר מהאנשים.</p>
+  <div class="row">
+    <span class="status draft">בהכנה</span>
+    <span class="status pending">ממתינה לאישור</span>
+    <span class="status returned">הוחזרה לתיקונים</span>
+    <span class="status published">פורסמה</span>
+  </div>
+  <p class="hint"><code>&lt;span class="status pending"&gt;</code></p>
+</section>
+
+<section class="panel">
+  <h2>כרטיס כתבה</h2>
+  <p class="muted">לפיד ולרשימות. בנייד הוא נערם לטור אחד לבד.</p>
+  <div class="cards">
+    <article class="card">
+      <div class="thumb"></div>
+      <div>
+        <h2><a href="#">כותרת הכתבה מופיעה כאן</a></h2>
+        <p>תקציר קצר של שתיים־שלוש שורות שמסביר על מה הכתבה, בלי לחשוף את הכל.</p>
+        <p class="byline">
+          <span class="who">דנה לוי</span>
+          <span class="sep">·</span><span>חדשות</span>
+          <span class="sep">·</span><time datetime="2026-09-18">18 בספטמבר</time>
+        </p>
+      </div>
+    </article>
+    <article class="card">
+      <div class="thumb"></div>
+      <div>
+        <h2><a href="#">כתבה שנייה, לראות את המפריד</a></h2>
+        <p>עוד תקציר.</p>
+        <p class="byline">
+          <span class="who">יונתן שגב</span>
+          <span class="sep">·</span><span>ספורט</span>
+          <span class="sep">·</span><time datetime="2026-09-19">19 בספטמבר</time>
+        </p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>טבלה</h2>
+  <div class="scrolls">
+    <table class="rows">
+      <thead><tr><th>כותרת</th><th>כתב</th><th>מצב</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>כתבה ראשונה</td><td>דנה לוי</td><td><span class="status pending">ממתינה לאישור</span></td><td><button type="button" class="quiet">פתיחה</button></td></tr>
+        <tr><td>כתבה שנייה</td><td>יונתן שגב</td><td><span class="status published">פורסמה</span></td><td><button type="button" class="quiet">פתיחה</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">עטפו ב־<code>.scrolls</code>. טבלה לא יודעת להיערם, אז בנייד היא גוללת בתוך עצמה ולא דוחפת את העמוד הצידה.</p>
+</section>
+
+<section class="panel">
+  <h2>שורת סינון</h2>
+  <div class="toolbar">
+    <div class="field grow">
+      <label for="sg-q">חיפוש</label>
+      <input id="sg-q" type="search" placeholder="מילה מתוך הכותרת">
+    </div>
+    <div class="field">
+      <label for="sg-cat">קטגוריה</label>
+      <select id="sg-cat"><option>הכל</option><option>חדשות</option></select>
+    </div>
+    <div class="field">
+      <label for="sg-sort">מיון</label>
+      <select id="sg-sort"><option>החדשות ביותר</option><option>הנצפות ביותר</option></select>
+    </div>
+    <button type="button" class="secondary">סינון</button>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>הודעות</h2>
+  <div class="stack">
+    <div class="notice"><p>הודעה ניטרלית.</p></div>
+    <div class="notice good"><p>הכתבה פורסמה.</p></div>
+    <div class="notice warn"><p>הכתבה ממתינה לאישור עורך.</p></div>
+    <div class="notice bad"><p>הכתבה הוחזרה לתיקונים: חסר ציטוט ממקור שני.</p></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>המצבים ששוכחים</h2>
+  <p class="muted">רשימה ריקה ורשימה שעוד לא הגיעה. שניהם קורים בכל מסך בפרויקט, ושניהם נראים שבורים אם אף אחד לא מעצב אותם.</p>
+
+  <h3>ריק</h3>
+  <div class="empty">
+    <h2>אין כאן כתבות</h2>
+    <p>נסו לשנות את הסינון, או לחזור מאוחר יותר.</p>
+  </div>
+
+  <h3>בטעינה</h3>
+  <div class="cards">
+    <article class="card">
+      <div class="thumb skeleton block"></div>
+      <div>
+        <div class="skeleton line"></div>
+        <div class="skeleton line"></div>
+        <div class="skeleton line short"></div>
+      </div>
+    </article>
+  </div>
+  <p class="hint"><code>.skeleton</code> עם <code>.line</code>, <code>.line.short</code> או <code>.block</code>. האנימציה נעצרת לבד אם המשתמש ביקש פחות תנועה.</p>
+</section>
+
+<section class="panel">
+  <h2>מעטפות פריסה</h2>
+  <dl class="shells">
+    <dt><code>.with-aside</code></dt>
+    <dd>שני טורים — תוכן וסיידבר. בנייד הסיידבר יורד למטה במקום להידחס. הפיד וווידג'ט מזג האוויר.</dd>
+    <dt><code>.reading</code></dt>
+    <dd>טור אחד ברוחב קריא, 38rem. גוף כתבה.</dd>
+    <dt><code>.panel</code></dt>
+    <dd>קופסה על העמוד. מסכי עבודה וטפסים.</dd>
+    <dt><code>.panel.narrow</code></dt>
+    <dd>קופסה צרה וממורכזת. התחברות.</dd>
+  </dl>
+</section>
+
+<%- include('partials/bottom') %>

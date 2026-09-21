@@ -1,12 +1,14 @@
 const config = require('./src/config');
 const logger = require('./src/logger');
 const db = require('./src/db');
+const { ensureAdmin } = require('./src/bootstrap');
 const app = require('./src/app');
 
 // Nothing is served until the database answers, so that a request never arrives
 // at a route with nothing behind it.
 async function start() {
   await db.connect(config.mongoUri);
+  await ensureAdmin();
   app.listen(config.port, () => logger.info(`the presses are running on http://localhost:${config.port}`));
 }
 

@@ -1,0 +1,45 @@
+<%- include('../partials/top') %>
+
+<section class="panel">
+  <h1>ניהול משתמשים</h1>
+  <p class="lede">חשבונות נוצרים כאן בלבד. אין הרשמה עצמית לאתר.</p>
+
+  <table class="rows">
+    <thead>
+      <tr>
+        <th>שם משתמש</th>
+        <th>שם מלא</th>
+        <th>תפקיד</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</section>
+
+<section class="panel narrow">
+  <h2>חשבון חדש</h2>
+
+  <form id="create" novalidate>
+    <label for="username">שם משתמש</label>
+    <input id="username" name="username" autocomplete="off" required>
+
+    <label for="name">שם מלא</label>
+    <input id="name" name="name" autocomplete="off" required>
+
+    <label for="password">סיסמה</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" required>
+
+    <label for="role">תפקיד</label>
+    <select id="role" name="role">
+      <option value="reporter">כתב</option>
+      <option value="editor">עורך</option>
+    </select>
+
+    <p class="problem" id="problem" hidden></p>
+
+    <button type="submit">יצירה</button>
+  </form>
+</section>
+
+<%- include('../partials/bottom') %>
