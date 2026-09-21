@@ -3,6 +3,7 @@ const express = require('express');
 const health = require('./health');
 const session = require('./session');
 const users = require('./users');
+const articles = require('./articles');
 const { home } = require('../controllers/home');
 const { loginPage } = require('../controllers/session');
 const { requireAuth, requireAdmin } = require('../middlewares/auth');
@@ -17,6 +18,7 @@ const router = express.Router();
 router.use('/api/health', health);
 router.use('/api/session', session);
 router.use('/api/users', users);
+router.use('/api/articles', articles);
 
 router.get('/', home);
 router.get('/login', loginPage);
