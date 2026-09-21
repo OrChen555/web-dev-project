@@ -67,8 +67,10 @@ This is the centre of the project. Read this section twice.
 reporter        ObjectId  ref users, required
 category        String    required, enum
 
-published       { title, summary, body, image, publishedAt }  or null
-draft           { title, summary, body, image }               or null
+published       { title, summary, body, image }  or null
+publishedAt     Date      or null
+
+draft           { title, summary, body, image }  or null
 draftStatus     String    enum: draft | pending | returned, or null
 
 editorNote      { text, by, at }  or null
@@ -280,4 +282,14 @@ for a date range, or always the whole life of the article?
 Owner: **person 3**.
 
 **5. The category list.** Owner: **the group**. The enum values are English and
-stable; the Hebrew names live in the views. Which categories exist?
+stable; the Hebrew names live in the views. The schema currently carries
+`news, politics, economy, sports, culture, technology, health`. Change the enum
+here if the group wants different ones.
+
+---
+
+## A note on `publishedAt`
+
+The two version subdocuments hold **copy only**: title, summary, body, image.
+`publishedAt` sits on the article itself rather than inside `published`, because
+a draft is not published and would carry the field meaninglessly.
