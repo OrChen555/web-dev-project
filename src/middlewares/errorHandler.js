@@ -16,6 +16,19 @@ function describe(err) {
   if (err.name === 'CastError') return { status: 404, message: 'No such thing' };
   if (err.name === 'ValidationError') return { status: 400, message: 'Some of the values are not valid' };
   if (err.type === 'entity.parse.failed') return { status: 400, message: 'The request body is not valid JSON' };
+
+  // Two accounts asking for the same username at the same moment both pass the
+  // check in the controller, and the unique index refuses the second one. The
+  // index is the real guarantee; this turns its refusal into the same answer the
+  // controller would have given.
+  if (err.code === 11000) return { status: 409, message: 'That username is taken' };
+
+  // Anything else that arrived with a status of its own decided it for a reason:
+  // a body over the limit is a 413, a URL that will not decode is a 400. Keeping
+  // the status and replacing only the wording is the point. Calling these 500
+  // would blame us for a bad request and bury the reason in a stack trace.
+  if (err.status && err.status < 500) return { status: err.status, message: 'That request could not be accepted' };
+
   return { status: 500, message: 'Something went wrong on our side' };
 }
 
