@@ -1,0 +1,10 @@
+<%- include('partials/top') %>
+
+<section class="notice">
+  <p class="status"><%= status %></p>
+  <h1><%= status === 404 ? 'הדף לא נמצא' : 'משהו השתבש' %></h1>
+  <p class="detail"><%= message %></p>
+  <p><a href="/">חזרה לעמוד הבית</a></p>
+</section>
+
+<%- include('partials/bottom') %>
