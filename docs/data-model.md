@@ -69,7 +69,7 @@ category        String    required, enum
 
 published       { title, summary, body, image, publishedAt }  or null
 draft           { title, summary, body, image }               or null
-draftStatus     String    enum: draft | pending | returned
+draftStatus     String    enum: draft | pending | returned, or null
 
 editorNote      { text, by, at }  or null
 publishHistory  [ { at, by } ]
@@ -100,10 +100,15 @@ in `draft`, `draft` is cleared, and an entry is appended to `publishHistory`.
 | בהכנה | `draft` set, `draftStatus: draft` |
 | ממתינה לאישור עורך | `draftStatus: pending` |
 | הוחזרה לתיקונים | `draftStatus: returned`, `editorNote` set |
-| פורסמה | `published` set, `draft` null |
+| פורסמה | `published` set, `draft` null, `draftStatus` null |
 | **פורסמה, with an update waiting** | `published` set **and** `draftStatus: pending` |
 
 The last row has no name in the requirements but is described in them at length.
+**`draftStatus` is null whenever there is no working copy.** The enum has no
+value for "nothing in progress", and leaving it at `draft` would put every
+published article into the editor's queue index looking like a draft. It is set
+when a draft is made and cleared again when one is approved.
+
 It is the reason `draftStatus` is not called `status`: an article is not in one
 state, it is two things at once — live to the public and mid-flow for the staff.
 

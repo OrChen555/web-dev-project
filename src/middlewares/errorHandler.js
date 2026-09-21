@@ -1,13 +1,17 @@
 const logger = require('../logger');
 
+// The specific cases come first, and err.status is the fallback. body-parser
+// sets a status of its own on a malformed body, so checking err.status above
+// them would answer from the library and never reach the branch that names it.
+//
 // Mongoose reports an id it cannot parse as a CastError. From the caller's side
 // such a URL simply names nothing, so it answers 404 rather than 400, and we
 // avoid announcing that our ids are ObjectIds.
 function statusFor(err) {
-  if (err.status) return err.status;
   if (err.name === 'CastError') return 404;
   if (err.name === 'ValidationError') return 400;
   if (err.type === 'entity.parse.failed') return 400;
+  if (err.status) return err.status;
   return 500;
 }
 
@@ -26,7 +30,8 @@ function errorHandler(err, req, res, next) {
   // Our own faults are recorded in full and described to the caller in one line.
   const message = status === 500 ? 'Something went wrong on our side' : err.message;
 
-  if (req.originalUrl.startsWith('/api')) return res.status(status).json({ error: message });
+  // The trailing slash matters: without it /apiary would answer with JSON.
+  if (req.originalUrl.startsWith('/api/')) return res.status(status).json({ error: message });
   res.status(status).render('error', { title: String(status), status, message });
 }
 
