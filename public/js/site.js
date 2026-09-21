@@ -58,16 +58,24 @@ const site = (() => {
   const theme = document.getElementById('theme');
 
   if (theme) {
+    const root = document.documentElement;
+
+    // Without a choice on record the page is following the system, so read what
+    // it actually resolved to rather than assuming light.
+    const showing = () => root.dataset.theme
+      || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    // A screen reader gets the state from aria-pressed rather than from which of
+    // the two icons happens to be visible. The label names the thing being
+    // toggled and stays put; only the pressed state changes.
+    const announce = () => theme.setAttribute('aria-pressed', String(showing() === 'dark'));
+
+    announce();
+
     theme.addEventListener('click', () => {
-      const root = document.documentElement;
-
-      // Without a choice on record the page is following the system, so read
-      // what it actually resolved to rather than assuming light.
-      const showing = root.dataset.theme
-        || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-
-      const next = showing === 'dark' ? 'light' : 'dark';
+      const next = showing() === 'dark' ? 'light' : 'dark';
       root.dataset.theme = next;
+      announce();
 
       // A browser with site data switched off should still switch, it just will
       // not remember the choice.

@@ -495,6 +495,11 @@ code {
   color: var(--ink);
 }
 
+/* Nothing here works without site.js, so the button stays out of the page until
+   the inline script in the head has added .js to the root. */
+.theme-toggle { display: none; }
+.js .theme-toggle { display: inline-flex; }
+
 /* Which icon shows is worked out in CSS rather than in script, so it is right
    on the first frame instead of settling a moment later. The button always
    shows the mode it will switch to. */
