@@ -40,4 +40,14 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { loadUser, requireAuth, requireRole, requireAdmin };
+// Not parameterised, because there is only ever one rule here: the single
+// administrator is created at startup and cannot be edited or removed through
+// the API. It reads req.target, so it goes after load(User) in the chain.
+const protectAdminAccount = (req, res, next) => {
+  if (req.target && req.target.isAdmin) {
+    return next(new HttpError(403, 'The administrator account cannot be changed through the API'));
+  }
+  next();
+};
+
+module.exports = { loadUser, requireAuth, requireRole, requireAdmin, protectAdminAccount };
