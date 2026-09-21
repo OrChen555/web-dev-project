@@ -19,6 +19,7 @@ const ACTIONS = {
   // A reporter sends their own work to the editor. Allowed from a fresh draft
   // and from one that came back for changes.
   submit: {
+    past: 'submitted',
     from: ['draft', 'returned'],
     allowed: owns,
     refusal: 'Only the reporter who owns this article can send it for approval',
@@ -31,6 +32,7 @@ const ACTIONS = {
   // published one, and the approval is recorded so that the analytics chart can
   // mark it later.
   approve: {
+    past: 'approved',
     from: ['pending'],
     allowed: (article, actor) => isEditor(actor),
     refusal: 'Only an editor can publish an article',
@@ -42,7 +44,11 @@ const ACTIONS = {
       article.publishHistory.push({ at, by: actor._id });
 
       article.draft = null;
-      article.draftStatus = 'draft';
+
+      // Not 'draft'. There is no working copy left, and leaving a status on it
+      // put every published article into the draftStatus index looking like one
+      // waiting for an editor.
+      article.draftStatus = null;
       article.editorNote = null;
     }
   },
@@ -50,6 +56,7 @@ const ACTIONS = {
   // Sent back with a note. The note is not optional: the requirement is that
   // the reporter can see what the editor asked for.
   return: {
+    past: 'returned',
     from: ['pending'],
     allowed: (article, actor) => isEditor(actor),
     refusal: 'Only an editor can return an article for changes',
@@ -64,6 +71,7 @@ const ACTIONS = {
   // where it is and a working copy is made from it, which is what lets readers
   // carry on seeing the approved version throughout.
   revise: {
+    past: 'revised',
     from: ['published'],
     allowed: (article, actor) => owns(article, actor) || isEditor(actor),
     refusal: 'Only the reporter who owns this article, or an editor, can revise it',
@@ -96,7 +104,7 @@ function apply(article, name, actor, note) {
   // The refusal names both ends, because "not allowed" on its own tells whoever
   // is reading the log nothing about what they tried to do.
   if (!action.from.includes(from)) {
-    throw new HttpError(409, `An article that is "${from}" cannot be ${name === 'return' ? 'returned' : name + 'd'}`);
+    throw new HttpError(409, `An article that is "${from}" cannot be ${action.past}`);
   }
 
   if (!action.allowed(article, actor)) throw new HttpError(403, action.refusal);
