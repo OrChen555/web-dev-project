@@ -11,6 +11,10 @@ const skeletonTemplate = document.getElementById('skeleton-template');
 // Enough placeholders to fill a screen, not a whole page of twenty.
 const SKELETONS = 4;
 
+// Long enough that a word is finished before it is searched for, short enough
+// that the feed still seems to answer the typing.
+const DEBOUNCE_MS = 300;
+
 // A request that never answers would leave the skeletons shimmering forever,
 // which looks like loading rather than like something being wrong.
 const TIMEOUT_MS = 10000;
@@ -30,14 +34,47 @@ function hebrewDate(date) {
   return format.format(date);
 }
 
-// The filters as the API reads them. An empty field is left out rather than
-// sent empty, so the request says only what the reader actually chose.
+// What each field falls back to. A field at its default is left out of both
+// the request and the address bar, so /?sort=recent never appears: the plain
+// address already means that.
+const DEFAULTS = { q: '', category: '', seen: '', sort: 'recent' };
+
+// The filters as the API reads them, and as the address bar shows them.
 function query() {
   const params = new URLSearchParams();
   for (const [name, value] of new FormData(form)) {
-    if (value.trim()) params.set(name, value.trim());
+    const clean = value.trim();
+    if (clean && clean !== DEFAULTS[name]) params.set(name, clean);
   }
   return params;
+}
+
+// The address is the starting point, so a shared or reloaded link opens on the
+// same feed. It is also something anybody can type: a select only takes a value
+// it has an option for, and anything else is dropped rather than sent on to
+// earn a 400 from the API.
+function fromAddress() {
+  const params = new URLSearchParams(window.location.search);
+  const q = form.elements.q;
+  q.value = (params.get('q') || '').trim().slice(0, q.maxLength);
+
+  for (const name of ['category', 'seen', 'sort']) {
+    const select = form.elements[name];
+    const wanted = params.get(name);
+    const known = [...select.options].some((o) => o.value === wanted);
+    select.value = known ? wanted : DEFAULTS[name];
+  }
+}
+
+// replaceState rather than pushState: a filter is a view of this page, not a
+// new page, so Back should leave the feed rather than step through every
+// letter that was typed into the search. Nothing here ever reloads the page.
+function toAddress(params) {
+  const search = params.toString();
+  const url = window.location.pathname + (search ? '?' + search : '') + window.location.hash;
+  if (url !== window.location.pathname + window.location.search + window.location.hash) {
+    history.replaceState(null, '', url);
+  }
 }
 
 // Everything a reporter typed goes in with textContent, never innerHTML: a title
@@ -107,40 +144,89 @@ function show(state, articles = []) {
   }
 }
 
-// A retry pressed twice, or a later load started before an earlier one
-// answered: only the newest request is allowed to change the screen.
-let latest = 0;
+// Every load cancels the one before it. Typing "כלכלה" is five requests' worth
+// of keystrokes, and without this the answer for "כלכ" could arrive last and
+// replace the one the reader actually asked for.
+let inFlight = null;
 
-async function load() {
-  const mine = ++latest;
+// What is on screen, so that a change that asks for the same thing again (a
+// space typed at the end of a search) does not reload the feed for nothing.
+let shown = null;
+
+async function load({ force = false } = {}) {
+  const params = query();
+  const key = params.toString();
+  toAddress(params);
+  if (!force && key === shown) return;
+
+  if (inFlight) inFlight.abort();
+  const controller = new AbortController();
+  inFlight = controller;
+
+  // Its own timer rather than AbortSignal.timeout, so that one controller
+  // carries both reasons to stop and the catch can tell them apart.
+  const timer = setTimeout(() => controller.abort(new DOMException('The feed took too long', 'TimeoutError')), TIMEOUT_MS);
+
+  shown = key;
   show('loading');
   retry.disabled = true;
 
   try {
-    const response = await fetch('/api/articles?' + query(), {
+    const response = await fetch('/api/articles?' + params, {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(TIMEOUT_MS)
+      signal: controller.signal
     });
     if (!response.ok) throw new Error('The feed answered ' + response.status);
 
     const { articles } = await response.json();
-    if (mine !== latest) return;
+    if (controller !== inFlight) return;
     show(articles.length ? 'cards' : 'empty', articles);
   } catch (err) {
-    if (mine !== latest) return;
+    // Cancelled because a newer load replaced it: that load owns the screen now.
+    if (controller !== inFlight) return;
+    // A failure is not what the reader asked for, so asking again is allowed.
+    shown = null;
     show('error');
   } finally {
-    if (mine === latest) retry.disabled = false;
+    clearTimeout(timer);
+    if (controller === inFlight) {
+      inFlight = null;
+      retry.disabled = false;
+    }
   }
 }
+
+// Search waits for a pause in the typing. The selects answer at once, and cancel
+// any search still waiting, since the load they start already includes it.
+let typing;
+
+form.elements.q.addEventListener('input', () => {
+  clearTimeout(typing);
+  typing = setTimeout(load, DEBOUNCE_MS);
+});
+
+form.addEventListener('change', (event) => {
+  if (event.target === form.elements.q) return;
+  clearTimeout(typing);
+  load();
+});
+
+// Enter in the search box would submit the form and reload the page. It
+// searches straight away instead, without waiting out the pause.
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  clearTimeout(typing);
+  load();
+});
 
 // The button hides itself while the retry runs, which drops keyboard focus to
 // the top of the page. Put it back: on the new cards if the retry worked, on
 // the button again if it did not.
 retry.addEventListener('click', async () => {
-  await load();
+  await load({ force: true });
   (failed.hidden ? feed : retry).focus();
 });
 
+fromAddress();
 load();
 })();
