@@ -7,6 +7,10 @@ const failed = document.getElementById('feed-error');
 const retry = document.getElementById('feed-retry');
 const cardTemplate = document.getElementById('card-template');
 const skeletonTemplate = document.getElementById('skeleton-template');
+const sentinel = document.getElementById('feed-sentinel');
+const end = document.getElementById('feed-end');
+const moreFailed = document.getElementById('feed-more-error');
+const moreRetry = document.getElementById('feed-more-retry');
 
 // Enough placeholders to fill a screen, not a whole page of twenty.
 const SKELETONS = 4;
@@ -129,58 +133,101 @@ function card(article) {
   return node;
 }
 
-// One of four things is on screen at a time: placeholders, cards, the empty
-// message or the error. Each call sets all three blocks, so no two can show
-// together whatever order the answers come back in.
+// The first page replaces whatever is in the feed: placeholders, cards, the
+// empty message or the error, one at a time. Each call sets every block, so no
+// two can show together whatever order the answers come back in. The pieces
+// that belong to later pages go back to hidden too, since a new first page
+// starts the scroll again.
 function show(state, articles = []) {
   feed.setAttribute('aria-busy', String(state === 'loading'));
   empty.hidden = state !== 'empty';
   failed.hidden = state !== 'error';
+  moreFailed.hidden = true;
+  end.hidden = true;
 
   if (state === 'loading') {
     feed.replaceChildren(...Array.from({ length: SKELETONS }, () => skeletonTemplate.content.cloneNode(true)));
   } else {
-    feed.replaceChildren(...articles.map(card));
+    feed.replaceChildren();
+    append(articles);
   }
 }
 
-// Every load cancels the one before it. Typing "כלכלה" is five requests' worth
-// of keystrokes, and without this the answer for "כלכ" could arrive last and
-// replace the one the reader actually asked for.
+const loaded = () => feed.querySelectorAll('article:not([aria-hidden])');
+
+// role="feed" asks each article for its place in the list, and for the size of
+// the list, which is not known (-1) until the last page is in.
+function append(articles) {
+  const start = loaded().length;
+  articles.forEach((article, i) => {
+    const node = card(article);
+    const element = node.firstElementChild;
+    element.setAttribute('aria-posinset', String(start + i + 1));
+    element.setAttribute('aria-setsize', '-1');
+    feed.append(node);
+  });
+}
+
+// The last page is in: the size of the list is known now, and a feed with
+// anything in it says that it has ended rather than just stopping.
+function finished() {
+  const all = loaded();
+  for (const element of all) element.setAttribute('aria-setsize', String(all.length));
+  end.hidden = all.length === 0;
+}
+
+// One request at a time, first page or next. A new first page cancels whatever
+// is running; a next page never starts while anything is.
 let inFlight = null;
 
-// What is on screen, so that a change that asks for the same thing again (a
-// space typed at the end of a search) does not reload the feed for nothing.
+// The filters of the cards on screen, and where their next page starts. Kept
+// apart from the form on purpose: a search typed but not yet sent must not be
+// paged with the cursor of the results it is about to replace.
 let shown = null;
+let cursor = null;
 
-async function load({ force = false } = {}) {
-  const params = query();
-  const key = params.toString();
-  toAddress(params);
-  if (!force && key === shown) return;
-
-  if (inFlight) inFlight.abort();
-  const controller = new AbortController();
-  inFlight = controller;
-
+async function request(params, controller) {
   // Its own timer rather than AbortSignal.timeout, so that one controller
   // carries both reasons to stop and the catch can tell them apart.
   const timer = setTimeout(() => controller.abort(new DOMException('The feed took too long', 'TimeoutError')), TIMEOUT_MS);
-
-  shown = key;
-  show('loading');
-  retry.disabled = true;
-
   try {
     const response = await fetch('/api/articles?' + params, {
       headers: { Accept: 'application/json' },
       signal: controller.signal
     });
     if (!response.ok) throw new Error('The feed answered ' + response.status);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
-    const { articles } = await response.json();
+// Every change of filter cancels the request before it. Typing "כלכלה" is five
+// requests' worth of keystrokes, and without this the answer for "כלכ" could
+// arrive last and replace the one the reader actually asked for.
+async function load({ force = false } = {}) {
+  const params = query();
+  const key = params.toString();
+  toAddress(params);
+  // Asking again for what is already on screen (a space typed at the end of a
+  // search) does not start the scroll over.
+  if (!force && key === shown) return;
+
+  if (inFlight) inFlight.abort();
+  const controller = new AbortController();
+  inFlight = controller;
+
+  shown = key;
+  cursor = null;
+  show('loading');
+  retry.disabled = true;
+
+  try {
+    const { articles, nextCursor } = await request(params, controller);
     if (controller !== inFlight) return;
     show(articles.length ? 'cards' : 'empty', articles);
+    cursor = nextCursor;
+    if (!cursor) finished();
   } catch (err) {
     // Cancelled because a newer load replaced it: that load owns the screen now.
     if (controller !== inFlight) return;
@@ -188,12 +235,68 @@ async function load({ force = false } = {}) {
     shown = null;
     show('error');
   } finally {
-    clearTimeout(timer);
     if (controller === inFlight) {
       inFlight = null;
       retry.disabled = false;
+      watch();
     }
   }
+}
+
+async function loadMore() {
+  // Nothing more, something already running, or the last next page failed and
+  // is waiting for the reader to press retry rather than being asked again and
+  // again by the observer.
+  if (!cursor || inFlight || !moreFailed.hidden) return;
+
+  const controller = new AbortController();
+  inFlight = controller;
+
+  const params = new URLSearchParams(shown);
+  params.set('after', cursor);
+
+  const placeholders = Array.from({ length: 2 }, () => skeletonTemplate.content.firstElementChild.cloneNode(true));
+  feed.append(...placeholders);
+  feed.setAttribute('aria-busy', 'true');
+  moreRetry.disabled = true;
+
+  try {
+    const { articles, nextCursor } = await request(params, controller);
+    if (controller !== inFlight) return;
+    placeholders.forEach((p) => p.remove());
+    append(articles);
+    cursor = nextCursor;
+    if (!cursor) finished();
+  } catch (err) {
+    // Cancelled by a change of filter: the new first page has already cleared
+    // the feed, placeholders and all.
+    if (controller !== inFlight) return;
+    placeholders.forEach((p) => p.remove());
+    moreFailed.hidden = false;
+  } finally {
+    if (controller === inFlight) {
+      inFlight = null;
+      feed.setAttribute('aria-busy', 'false');
+      moreRetry.disabled = false;
+      watch();
+    }
+  }
+}
+
+// Asks for the next page while the sentinel is still some way below the
+// screen, so that a reader scrolling at an ordinary pace does not reach the
+// bottom and wait.
+const observer = new IntersectionObserver((entries) => {
+  if (entries.some((entry) => entry.isIntersecting)) loadMore();
+}, { rootMargin: '0px 0px 800px 0px' });
+
+// The observer only speaks when the sentinel crosses the line. After a page
+// lands on a tall screen it can still be inside it, crossing nothing, and the
+// feed would stop short. Watching it afresh makes the observer report where it
+// is now, which pulls in another page if one is needed.
+function watch() {
+  observer.unobserve(sentinel);
+  if (cursor && moreFailed.hidden) observer.observe(sentinel);
 }
 
 // Search waits for a pause in the typing. The selects answer at once, and cancel
@@ -225,6 +328,17 @@ form.addEventListener('submit', (event) => {
 retry.addEventListener('click', async () => {
   await load({ force: true });
   (failed.hidden ? feed : retry).focus();
+});
+
+// The next page again, from where the last one stopped. Focus goes to the first
+// of the new cards, which is where the reader was heading.
+moreRetry.addEventListener('click', async () => {
+  const before = loaded().length;
+  moreFailed.hidden = true;
+  await loadMore();
+  const next = loaded()[before];
+  if (next) next.querySelector('h2 a').focus();
+  else if (!moreFailed.hidden) moreRetry.focus();
 });
 
 fromAddress();

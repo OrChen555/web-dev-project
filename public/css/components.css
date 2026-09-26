@@ -393,6 +393,11 @@ textarea[aria-invalid='true'] { border-color: var(--danger); }
 .toolbar .field { margin-block-end: 0; }
 .toolbar .grow { flex: 1 1 12rem; }
 
+/* The endless feed. The sentinel is what IntersectionObserver watches; a pixel
+   tall, because an element with no area is not reliably reported as visible. */
+.sentinel { height: 1px; }
+.feed-end { text-align: center; padding-block: var(--space-5); }
+
 /* Dialog ------------------------------------------------------------------ */
 
 dialog {

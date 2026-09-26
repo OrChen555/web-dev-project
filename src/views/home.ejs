@@ -52,6 +52,19 @@
          that focus can be moved here after a retry. -->
     <div class="cards" id="feed" role="feed" tabindex="-1" aria-label="כתבות"></div>
 
+    <!-- A failed next page leaves the cards already loaded where they are, so it
+         has its own message rather than the one that replaces the whole feed. -->
+    <div class="notice bad" id="feed-more-error" role="alert" hidden>
+      <p>לא הצלחנו לטעון עוד כתבות.</p>
+      <button type="button" class="secondary" id="feed-more-retry">נסו שוב</button>
+    </div>
+
+    <p class="muted feed-end" id="feed-end" hidden>אלה כל הכתבות.</p>
+
+    <!-- Nothing to see. When this scrolls near the bottom of the screen, the next
+         page is asked for. -->
+    <div class="sentinel" id="feed-sentinel" aria-hidden="true"></div>
+
     <div class="empty" id="feed-empty" hidden>
       <h2>אין כאן כתבות</h2>
       <p>נסו לשנות את הסינון, או לחזור מאוחר יותר.</p>
