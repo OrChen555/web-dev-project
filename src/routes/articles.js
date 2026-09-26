@@ -4,7 +4,7 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const load = require('../middlewares/load');
 const { requireAuth, requireRole } = require('../middlewares/auth');
 const Article = require('../models/article');
-const { list, one, create, submit } = require('../controllers/articles');
+const { list, one, create, update, submit } = require('../controllers/articles');
 
 const router = express.Router();
 
@@ -18,6 +18,12 @@ router.post('/',
   requireAuth,
   requireRole('reporter'),
   asyncHandler(create)
+);
+
+router.patch('/:id',
+  requireAuth,
+  load(Article),
+  asyncHandler(update)
 );
 
 router.post('/:id/submit',

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
-const { apply } = require('../services/articleState');
+const { apply, mayEdit, isEditor } = require('../services/articleState');
 const logger = require('../logger');
 
 const MAX_LIMIT = 50;
@@ -41,6 +41,10 @@ const readBody = (body) => ({
   body: String(body.body || '').trim(),
   image: String(body.image || '').trim()
 });
+
+// The four the autosave may write. category is missing on purpose: it lives on
+// the article, not the version, so both copies share one.
+const DRAFT_FIELDS = ['title', 'summary', 'body', 'image'];
 
 // Paging carries the last row's sort value and its id, not an offset. Skipping
 // re-reads everything before the offset, so deep pages get slower the further a
@@ -152,6 +156,7 @@ async function create(req, res) {
   }
 
   const article = await Article.create({
+    reporter: req.user._id,
     category,
     draft: { title, summary, body, image: image || undefined },
     draftStatus: 'draft'
@@ -161,6 +166,44 @@ async function create(req, res) {
 
   // No Location header: it would name a URL that 404s until this is published.
   res.status(201).json(asDraft(article));
+}
+
+// The autosave. Writes the working copy as the reporter types, so the work
+// survives a refresh or a different computer.
+async function update(req, res) {
+  const article = req.target;
+
+  if (req.body.category !== undefined) {
+    throw new HttpError(400, 'The category can only be chosen when the article is created');
+  }
+
+  if (!article.draft) throw new HttpError(409, 'There is no working copy to edit');
+  if (!mayEdit(article, req.user)) {
+    throw new HttpError(403, 'Only the reporter who owns this article, or an editor, can edit it');
+  }
+
+  if (article.draftStatus === 'pending' && !isEditor(req.user)) {
+    throw new HttpError(409, 'This article is with the editor and cannot be edited');
+  }
+
+  // Field by field: assigning an object to draft would drop the fields left out.
+  for (const field of DRAFT_FIELDS) {
+    if (req.body[field] === undefined) continue;
+
+    if (typeof req.body[field] !== 'string') {
+      throw new HttpError(400, `The ${field} has to be text`);
+    }
+
+    const value = req.body[field].trim();
+
+    // An empty image means remove it
+    if (field === 'image') article.draft.image = value || undefined;
+    else if (value) article.draft[field] = value;
+  }
+
+  await article.save();
+
+  res.json(asDraft(article));
 }
 
 async function submit(req, res) {
@@ -173,4 +216,4 @@ async function submit(req, res) {
   res.json({ id: String(article._id), state: article.state });
 }
 
-module.exports = { list, one, create, submit };
+module.exports = { list, one, create, update, submit };

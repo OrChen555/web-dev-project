@@ -117,4 +117,7 @@ function apply(article, name, actor, note) {
   return article;
 }
 
-module.exports = { apply, stateOf, ACTIONS: Object.keys(ACTIONS) };
+// Only the owner or editor can edit the article. 
+const mayEdit = (article, actor) => owns(article, actor) || isEditor(actor);
+
+module.exports = { apply, stateOf, mayEdit, isEditor, ACTIONS: Object.keys(ACTIONS) };

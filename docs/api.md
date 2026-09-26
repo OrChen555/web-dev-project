@@ -162,6 +162,30 @@ POST   /api/articles/:id/approve   editor
 POST   /api/articles/:id/return    editor, { note } required
 ```
 
+**`PATCH`** is the autosave. Every field is optional and only the ones sent are
+written, so a request carries whatever has changed:
+
+```
+PATCH /api/articles/:id   { title?, summary?, body?, image? }  -> 200 the draft
+```
+
+Every value has to be text: anything else is a **400**, rather than a client's
+mistake being stored as somebody's headline. Emptying `title`, `summary` or `body`
+keeps its previous value, because clearing a box to retype it is not a mistake
+worth refusing mid-sentence; emptying `image` removes it, since it is the one
+field that is not required. **`category` is
+refused with a 400**: there is one on the article rather than one per version, so
+changing it would reach readers with no editor approval. It is chosen at creation.
+
+It writes `draft` and nothing else — never `published`, never `draftStatus`. Who
+may call it depends on where the article is:
+
+| The article | Who may edit it |
+|---|---|
+| `draft` or `returned` | the reporter who owns it, or any editor |
+| `pending` | an editor only. It has been handed over |
+| published with no working copy | nobody: **409**, revise it first |
+
 > **needs input — person 2.** Which of these does the feed send, and is anything
 > missing: `q`, `category`, `sort=recent|popular`, `seen=yes|no`, `limit`,
 > `after`. And what does one card need in the response? Currently assumed:
