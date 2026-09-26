@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
+const { apply } = require('../services/articleState');
+const logger = require('../logger');
 
 const MAX_LIMIT = 50;
 
@@ -17,6 +19,27 @@ const asCard = (article) => ({
   publishedAt: article.publishedAt,
   viewCount: article.viewCount,
   commentCount: article.commentCount
+});
+
+//asCard for the draft article. (no publishedAt, viewCount, commentCount )
+const asDraft = (article) => ({
+  id: String(article._id),
+  state: article.state,
+  category: article.category,
+  title: article.draft.title,
+  summary: article.draft.summary,
+  body: article.draft.body,
+  image: article.draft.image || null
+});
+
+// Picked out one at a time. reporter and draftStatus are missing on purpose: 
+// a field that is never read cannot be forged.
+const readBody = (body) => ({
+  category: String(body.category || ''),
+  title: String(body.title || '').trim(),
+  summary: String(body.summary || '').trim(),
+  body: String(body.body || '').trim(),
+  image: String(body.image || '').trim()
 });
 
 // Paging carries the last row's sort value and its id, not an offset. Skipping
@@ -119,4 +142,35 @@ async function one(req, res) {
   });
 }
 
-module.exports = { list, one };
+// Validates what the reporter typed and creates the article as a draft. 
+async function create(req, res) {
+  const { category, title, summary, body, image } = readBody(req.body);
+
+  if (!title || !summary || !body) throw new HttpError(400, 'A title, a summary and a body are all required');
+  if (!Article.CATEGORIES.includes(category)) {
+    throw new HttpError(400, `Category must be one of: ${Article.CATEGORIES.join(', ')}`);
+  }
+
+  const article = await Article.create({
+    category,
+    draft: { title, summary, body, image: image || undefined },
+    draftStatus: 'draft'
+  });
+
+  logger.info('article created', { by: req.user.username, article: String(article._id), category });
+
+  // No Location header: it would name a URL that 404s until this is published.
+  res.status(201).json(asDraft(article));
+}
+
+async function submit(req, res) {
+  const article = req.target;
+  apply(article, 'submit', req.user);
+  await article.save();
+
+  logger.info('article submitted', { by: req.user.username, article: String(article._id) });
+
+  res.json({ id: String(article._id), state: article.state });
+}
+
+module.exports = { list, one, create, submit };
