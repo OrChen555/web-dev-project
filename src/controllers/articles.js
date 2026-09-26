@@ -206,6 +206,16 @@ async function update(req, res) {
   res.json(asDraft(article));
 }
 
+async function revise(req, res) {
+  const article = req.target;
+  apply(article, 'revise', req.user);
+  await article.save();
+
+  logger.info('article revised', { by: req.user.username, article: String(article._id) });
+
+  res.json(asDraft(article));
+}
+
 async function submit(req, res) {
   const article = req.target;
   apply(article, 'submit', req.user);
@@ -216,4 +226,4 @@ async function submit(req, res) {
   res.json({ id: String(article._id), state: article.state });
 }
 
-module.exports = { list, one, create, update, submit };
+module.exports = { list, one, create, update, revise, submit };
