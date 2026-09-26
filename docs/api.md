@@ -164,13 +164,15 @@ POST   /api/articles/:id/return    editor, { note } required
 
 ### The feed query — person 2
 
-All six are optional and combine freely. Leave one out and it does not filter.
+All six are optional and combine freely. Leave one out, or send it empty, and it
+does not filter. Sending `q`, `category` or `sort` twice
+(`?category=news&category=sports`) is a **400**.
 
 | Param | Values | Default | Notes |
 |---|---|---|---|
-| `q` | free text | none | Text search on the published title |
-| `category` | one of the category enum | all | An unknown value matches nothing |
-| `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else falls back to `recent` |
+| `q` | free text | none | Text search on the published title. Trimmed and cut to 100 characters; blank means no search |
+| `category` | one of the category enum | all | An unknown value is a **400** |
+| `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else is a **400** |
 | `seen` | `yes` \| `no` | both | Against this device's `visitorId`. See the ceiling below |
 | `limit` | whole number, 1–50 | 20 | Out of range or not a number falls back to 20; above 50 is cut to 50 |
 | `after` | a `nextCursor` | first page | A cursor that does not decode is a **400** |
