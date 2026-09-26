@@ -300,8 +300,10 @@ provider is [Open-Meteo](https://open-meteo.com), which needs no key.
   alone for a minute, so an outage does not make every page wait out the
   timeout.
 - **With nothing to serve** the answer is **503** with the usual `{ error }`
-  body and a `Retry-After` header. The widget hides itself rather than
-  breaking the page.
+  body and a `Retry-After` header. The widget says the weather is not
+  available, offers a retry, and tries again on its own once `Retry-After` has
+  passed. If it already had a reading, it keeps showing it, marked as possibly
+  out of date.
 
 ---
 
