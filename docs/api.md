@@ -147,8 +147,8 @@ that sets one is covered.
 
 ## Articles — person 1 builds these, persons 2, 4 and 5 read them
 
-The write side and the state changes are settled. **The query string on the list
-endpoint needs input from person 2**, who knows what the feed requires.
+The write side and the state changes are settled. The query string on the list
+endpoint and the card it returns are set by person 2, below.
 
 ```
 GET    /api/articles         the public feed. Published only
@@ -162,10 +162,55 @@ POST   /api/articles/:id/approve   editor
 POST   /api/articles/:id/return    editor, { note } required
 ```
 
-> **needs input — person 2.** Which of these does the feed send, and is anything
-> missing: `q`, `category`, `sort=recent|popular`, `seen=yes|no`, `limit`,
-> `after`. And what does one card need in the response? Currently assumed:
-> `id, title, summary, image, category, reporter { id, name }, publishedAt`.
+### The feed query — person 2
+
+All six are optional and combine freely. Leave one out and it does not filter.
+
+| Param | Values | Default | Notes |
+|---|---|---|---|
+| `q` | free text | none | Text search on the published title |
+| `category` | one of the category enum | all | An unknown value matches nothing |
+| `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else falls back to `recent` |
+| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. See the ceiling below |
+| `limit` | whole number, 1–50 | 20 | Out of range or not a number falls back to 20; above 50 is cut to 50 |
+| `after` | a `nextCursor` | first page | A cursor that does not decode is a **400** |
+
+```
+GET /api/articles?category=sports&sort=popular&seen=no&limit=20
+    -> 200 { "articles": [ card, ... ], "nextCursor": "..." | null }
+```
+
+Changing `q`, `category`, `sort` or `seen` means starting again without
+`after`. The cursor only knows its position in one ordering of one result set.
+
+**The seen ceiling.** "Seen" means opened on this device in the last 90 days,
+among its 1,000 most recently opened articles. Anything older or further back
+counts as not seen again. The reasoning is in
+[data-model.md](./data-model.md#open-questions), question 1.
+
+### One card
+
+```json
+{
+  "id": "66f1c0...",
+  "title": "...",
+  "summary": "...",
+  "image": "/uploads/... or null",
+  "category": "sports",
+  "reporter": { "id": "66f1b9...", "name": "..." },
+  "publishedAt": "2026-09-20T14:07:00.000Z",
+  "viewCount": 1204,
+  "commentCount": 17,
+  "seen": true
+}
+```
+
+- **`seen`** is always present, even when the request did not filter by it, so
+  the card can mark articles the reader has already opened.
+- **`viewCount` and `commentCount`** are shown on the card, and `viewCount` is
+  what `sort=popular` orders by.
+- **No `body`.** The feed never sends the article text; `GET /api/articles/:id`
+  does, alongside the card fields other than `seen`.
 
 > **needs input — persons 4 and 5.** The reporter's own list and the editor's
 > queue are the same collection with a different filter. Say what you need:
@@ -209,6 +254,37 @@ that the chart can mark them:
 > **needs input — person 5.** Does the chart ask for a date range or always the
 > whole life of the article? For a long range, should buckets be summed into
 > wider windows before they are sent?
+
+## Weather — person 2
+
+```
+GET /api/weather   -> 200 { location, temperature, condition, updatedAt }
+                      503 when the weather provider does not answer
+```
+
+```json
+{
+  "location": "Tel Aviv",
+  "temperature": 27,
+  "condition": "clear",
+  "updatedAt": "2026-09-20T14:00:00.000Z"
+}
+```
+
+The widget on the home page reads this, never the provider directly. Going
+through our server keeps any provider key out of the browser, lets us swap
+providers without touching the page, and lets one cached answer serve every
+reader instead of each of them calling out.
+
+- **No query params.** One location, set in config.
+- **`temperature`** is in °C, a whole number.
+- **`condition`** is a short English key (`clear`, `clouds`, `rain`, ...). The
+  Hebrew text and the icon are chosen in the view, the same as categories.
+- **Cached server side for 10 minutes.** `updatedAt` is when the provider gave
+  us the reading, not when this request was answered.
+- **When the provider fails**, a cached reading is served if there is one. With
+  nothing cached the answer is **503** with the usual `{ error }` body, and the
+  widget hides itself rather than breaking the page.
 
 ---
 

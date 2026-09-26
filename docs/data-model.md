@@ -191,9 +191,11 @@ It cannot live in the browser. The filter combines with category, sorting and
 paging over thousands of articles, so the database has to apply it — which means
 the server has to know the answer.
 
-> **Open question, see the bottom of this page.** Filtering with `$nin` over a
-> visitor's list of seen articles is fine for a few hundred and poor for tens of
-> thousands. Decide the ceiling before building on it.
+**The ceiling: the 1,000 most recent, and nothing older than 90 days.** Opening
+an article again bumps `updatedAt`, so "recent" means recently opened, not first
+opened. A TTL index on `updatedAt` deletes rows after 90 days, and the feed
+reads at most the 1,000 newest for a visitor before filtering with `$in` /
+`$nin`. The reasoning is at the bottom of this page, question 1.
 
 ---
 
@@ -242,7 +244,9 @@ thousands of articles.
 | `comments` | `article`, `createdAt` | a page of comments |
 | `comments` | `visitorId`, `createdAt` | the three per minute limit |
 | `viewbuckets` | `article`, `bucket` unique | the upsert and the chart |
-| `visitorviews` | `visitorId`, `article` unique | the seen filter |
+| `visitorviews` | `visitorId`, `article` unique | recording a view once per device |
+| `visitorviews` | `visitorId`, `updatedAt` desc | the seen filter's 1,000 most recent |
+| `visitorviews` | `updatedAt`, TTL 90 days | expiring old rows |
 
 **Paging is by cursor, not by `skip`.** Two reasons. `skip` reads and discards
 everything before the offset, so deep pages get slower the further you scroll.
@@ -267,12 +271,24 @@ disagrees, this is the paragraph to change.
 ## Open questions
 
 **1. How large may a visitor's seen list get?** Owner: **person 2**, with person
-1. The seen / not seen filter needs a ceiling and a plan for what happens above
-it. Options: cap the stored history per visitor, or expire rows after some time.
+1. **Answered: both.** The filter uses a visitor's **1,000 most recently opened**
+articles, and rows **expire after 90 days**.
 
-**2. What does a feed card actually need?** Owner: **person 2**. The fields the
-card shows decide what the list endpoint returns. Title, image, summary,
-category, reporter, published date — anything else?
+- The cap bounds the query. `$nin` over 1,000 ids stays cheap; over tens of
+  thousands it would not. It is applied when the feed reads the list (newest
+  1,000 by `updatedAt`), so a view is still a single upsert.
+- The TTL bounds the storage. Without it a device that stops visiting keeps its
+  rows forever. Mongo's TTL index removes them, with no job of ours to run.
+- What a reader notices: an article opened more than 90 days ago, or more than
+  1,000 articles back, shows as not seen again. For a news feed that is the
+  right answer anyway.
+
+**2. What does a feed card actually need?** Owner: **person 2**. **Answered:**
+`id, title, summary, image, category, reporter { id, name }, publishedAt,
+viewCount, commentCount, seen`. No `body`. `seen` is worked out per request from
+`visitorviews` and always sent, so the card can mark what the reader has already
+opened whether or not the feed is filtered by it. The full shape is in
+[api.md](./api.md), under the feed.
 
 **3. What does the analytics query return?** Owner: **person 5**. Buckets as
 they are, or summed into larger windows for longer ranges? Does the chart ask
