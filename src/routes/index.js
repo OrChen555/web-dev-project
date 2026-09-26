@@ -4,6 +4,7 @@ const health = require('./health');
 const session = require('./session');
 const users = require('./users');
 const articles = require('./articles');
+const weather = require('./weather');
 const { home } = require('../controllers/home');
 const { loginPage } = require('../controllers/session');
 const { requireAuth, requireAdmin } = require('../middlewares/auth');
@@ -19,6 +20,7 @@ router.use('/api/health', health);
 router.use('/api/session', session);
 router.use('/api/users', users);
 router.use('/api/articles', articles);
+router.use('/api/weather', weather);
 
 router.get('/', home);
 router.get('/login', loginPage);

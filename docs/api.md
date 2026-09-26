@@ -261,33 +261,47 @@ that the chart can mark them:
 ## Weather — person 2
 
 ```
-GET /api/weather   -> 200 { location, temperature, condition, updatedAt }
-                      503 when the weather provider does not answer
+GET /api/weather?city=<key>   -> 200 { city, temperature, condition, updatedAt, stale }
+                                 400 for a city not on the list
+                                 503 when there is no reading to give, with Retry-After
 ```
 
 ```json
 {
-  "location": "Tel Aviv",
-  "temperature": 27,
-  "condition": "clear",
-  "updatedAt": "2026-09-20T14:00:00.000Z"
+  "city": "tel-aviv",
+  "temperature": 25,
+  "condition": "partly-cloudy",
+  "updatedAt": "2026-09-26T19:30:00.000Z",
+  "stale": false
 }
 ```
 
 The widget on the home page reads this, never the provider directly. Going
-through our server keeps any provider key out of the browser, lets us swap
-providers without touching the page, and lets one cached answer serve every
-reader instead of each of them calling out.
+through our server lets us swap providers without touching the page, and lets
+one cached answer serve every reader instead of each of them calling out. The
+provider is [Open-Meteo](https://open-meteo.com), which needs no key.
 
-- **No query params.** One location, set in config.
+- **`city`** is one of `tel-aviv`, `jerusalem`, `haifa`, `beer-sheva`,
+  `eilat`. Left out or empty means `tel-aviv`. Anything else, including the
+  wrong case or the parameter sent twice, is a **400**. A fixed list because
+  each city is a request to somebody else's service; the Hebrew names belong to
+  the view, the same as categories.
 - **`temperature`** is in °C, a whole number.
-- **`condition`** is a short English key (`clear`, `clouds`, `rain`, ...). The
-  Hebrew text and the icon are chosen in the view, the same as categories.
-- **Cached server side for 10 minutes.** `updatedAt` is when the provider gave
-  us the reading, not when this request was answered.
-- **When the provider fails**, a cached reading is served if there is one. With
-  nothing cached the answer is **503** with the usual `{ error }` body, and the
-  widget hides itself rather than breaking the page.
+- **`condition`** is one of `clear`, `partly-cloudy`, `cloudy`, `fog`,
+  `drizzle`, `rain`, `snow`, `thunderstorm`. The Hebrew text and the icon
+  are chosen in the view.
+- **`updatedAt`** is when the provider took the reading, not when this
+  request was answered.
+- **Cached server side for 10 minutes, per city.** Readers who ask while a city
+  is being fetched share that one request.
+- **When the provider fails** (an error, a 4 second timeout, or an answer in a
+  shape we do not recognise), the last reading is served with `stale: true`,
+  for up to three hours after it was taken. After a failure the provider is left
+  alone for a minute, so an outage does not make every page wait out the
+  timeout.
+- **With nothing to serve** the answer is **503** with the usual `{ error }`
+  body and a `Retry-After` header. The widget hides itself rather than
+  breaking the page.
 
 ---
 
