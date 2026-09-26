@@ -11,6 +11,8 @@ const sentinel = document.getElementById('feed-sentinel');
 const end = document.getElementById('feed-end');
 const moreFailed = document.getElementById('feed-more-error');
 const moreRetry = document.getElementById('feed-more-retry');
+const moreBox = document.getElementById('feed-more');
+const moreButton = document.getElementById('feed-more-button');
 
 // Enough placeholders to fill a screen, not a whole page of twenty.
 const SKELETONS = 4;
@@ -143,6 +145,7 @@ function show(state, articles = []) {
   empty.hidden = state !== 'empty';
   failed.hidden = state !== 'error';
   moreFailed.hidden = true;
+  moreBox.hidden = true;
   end.hidden = true;
 
   if (state === 'loading') {
@@ -259,6 +262,12 @@ async function loadMore() {
   feed.append(...placeholders);
   feed.setAttribute('aria-busy', 'true');
   moreRetry.disabled = true;
+  // aria-disabled rather than disabled: Chrome takes focus away from a button
+  // the moment it is disabled, and a keyboard reader who pressed it (or who
+  // tabbed onto it and so scrolled the next page in) would be thrown back to
+  // the top of the page. Pressing it meanwhile does nothing, because loadMore
+  // will not start while this load runs.
+  moreButton.setAttribute('aria-disabled', 'true');
 
   try {
     const { articles, nextCursor } = await request(params, controller);
@@ -278,6 +287,7 @@ async function loadMore() {
       inFlight = null;
       feed.setAttribute('aria-busy', 'false');
       moreRetry.disabled = false;
+      moreButton.removeAttribute('aria-disabled');
       watch();
     }
   }
@@ -286,17 +296,37 @@ async function loadMore() {
 // Asks for the next page while the sentinel is still some way below the
 // screen, so that a reader scrolling at an ordinary pace does not reach the
 // bottom and wait.
-const observer = new IntersectionObserver((entries) => {
-  if (entries.some((entry) => entry.isIntersecting)) loadMore();
-}, { rootMargin: '0px 0px 800px 0px' });
+//
+// Without IntersectionObserver there is no scrolling in of pages at all, and
+// the button below is how the feed carries on.
+const observer = 'IntersectionObserver' in window
+  ? new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) loadMore();
+  }, { rootMargin: '0px 0px 800px 0px' })
+  : null;
 
 // The observer only speaks when the sentinel crosses the line. After a page
 // lands on a tall screen it can still be inside it, crossing nothing, and the
 // feed would stop short. Watching it afresh makes the observer report where it
 // is now, which pulls in another page if one is needed.
+//
+// It also settles the button: there while there is a next page to get, gone at
+// the end of the feed, and gone while a failed page waits for its own retry.
 function watch() {
+  const more = Boolean(cursor) && moreFailed.hidden;
+
+  // A button taken away while it has focus drops the reader back at the top of
+  // the page. If it is going, focus goes where they can carry on from: the retry
+  // when the page failed, the last card when the feed has ended.
+  if (!more && moreBox.contains(document.activeElement)) {
+    const cards = loaded();
+    if (!moreFailed.hidden) moreRetry.focus();
+    else if (cards.length) cards[cards.length - 1].querySelector('h2 a').focus();
+  }
+  moreBox.hidden = !more;
+  if (!observer) return;
   observer.unobserve(sentinel);
-  if (cursor && moreFailed.hidden) observer.observe(sentinel);
+  if (more) observer.observe(sentinel);
 }
 
 // Search waits for a pause in the typing. The selects answer at once, and cancel
@@ -330,16 +360,20 @@ retry.addEventListener('click', async () => {
   (failed.hidden ? feed : retry).focus();
 });
 
-// The next page again, from where the last one stopped. Focus goes to the first
-// of the new cards, which is where the reader was heading.
-moreRetry.addEventListener('click', async () => {
+// The next page on request, from the button or from the retry after a failed
+// one. Focus goes to the first of the new cards, which is where the reader was
+// heading; if the page failed, to the retry, which is what they can do next.
+async function more() {
   const before = loaded().length;
   moreFailed.hidden = true;
   await loadMore();
   const next = loaded()[before];
   if (next) next.querySelector('h2 a').focus();
   else if (!moreFailed.hidden) moreRetry.focus();
-});
+}
+
+moreButton.addEventListener('click', more);
+moreRetry.addEventListener('click', more);
 
 fromAddress();
 load();

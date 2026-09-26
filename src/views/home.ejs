@@ -61,6 +61,13 @@
 
     <p class="muted feed-end" id="feed-end" hidden>אלה כל הכתבות.</p>
 
+    <!-- Scrolling loads the next page by itself, but not for someone moving
+         through the page by keyboard or screen reader, and not in a browser
+         without IntersectionObserver. This is the same next page, on request. -->
+    <div class="feed-more" id="feed-more" hidden>
+      <button type="button" class="secondary" id="feed-more-button">טעינת כתבות נוספות</button>
+    </div>
+
     <!-- Nothing to see. When this scrolls near the bottom of the screen, the next
          page is asked for. -->
     <div class="sentinel" id="feed-sentinel" aria-hidden="true"></div>
