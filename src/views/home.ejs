@@ -46,12 +46,22 @@
     </form>
 
     <!-- Filled from the API, one card per article. Not a live region: with
-         endless scrolling it would read out every card as it arrived. -->
-    <div class="cards" id="feed"></div>
+         endless scrolling it would read out every card as it arrived.
+         role="feed" is the ARIA pattern for exactly this, a scrolling list of
+         articles that says aria-busy while more are loading. tabindex="-1" so
+         that focus can be moved here after a retry. -->
+    <div class="cards" id="feed" role="feed" tabindex="-1" aria-label="כתבות"></div>
 
     <div class="empty" id="feed-empty" hidden>
       <h2>אין כאן כתבות</h2>
       <p>נסו לשנות את הסינון, או לחזור מאוחר יותר.</p>
+    </div>
+
+    <!-- role="alert" so that a failure is announced, not only seen. The retry
+         asks again with the same filters. -->
+    <div class="notice bad" id="feed-error" role="alert" hidden>
+      <p>לא הצלחנו לטעון את הכתבות. בדקו את החיבור ונסו שוב.</p>
+      <button type="button" class="secondary" id="feed-retry">נסו שוב</button>
     </div>
 
     <noscript>
@@ -81,6 +91,19 @@
             <span class="sep" aria-hidden="true">·</span><time data-slot="published"></time>
             <span class="seen" data-slot="seen" hidden><span class="sep" aria-hidden="true">·</span>נקראה</span>
           </p>
+        </div>
+      </article>
+    </template>
+
+    <!-- A card-shaped placeholder, shown a few at a time while a page loads, so
+         the layout does not jump when the real cards arrive. -->
+    <template id="skeleton-template">
+      <article class="card" aria-hidden="true">
+        <div class="thumb skeleton block"></div>
+        <div>
+          <div class="skeleton line"></div>
+          <div class="skeleton line"></div>
+          <div class="skeleton line short"></div>
         </div>
       </article>
     </template>
