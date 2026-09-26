@@ -1,14 +1,90 @@
 <%- include('partials/top') %>
 
 <div class="with-aside">
-  <div>
-    <!-- The news feed belongs here. Person 2 replaces this block; the shell,
-         the card markup and the toolbar are in the style guide. -->
-    <div class="empty">
-      <h2>פיד החדשות ייבנה כאן</h2>
-      <p>המבנה, כרטיס הכתבה ושורת הסינון מוכנים ומופיעים ב־<a href="/styleguide">מדריך הרכיבים</a>.</p>
+  <section aria-labelledby="feed-title">
+    <h1 class="sr-only" id="feed-title">פיד החדשות</h1>
+
+    <!-- The field names are the feed's query parameters, so the script can turn
+         the form straight into a request with new FormData(form). The values are
+         the API's too: an empty one means "no filter", the same as leaving the
+         parameter out. -->
+    <form class="toolbar" id="filters" role="search" aria-controls="feed">
+      <div class="field grow">
+        <label for="q">חיפוש</label>
+        <!-- 100 is where the API cuts a search off anyway. -->
+        <input id="q" name="q" type="search" maxlength="100" placeholder="מילה מתוך הכותרת" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="category">קטגוריה</label>
+        <!-- Also where the script reads a category's Hebrew name from, for the
+             card: the option's text for the key the API sends. -->
+        <select id="category" name="category">
+          <option value="">הכל</option>
+          <% for (const [key, name] of Object.entries(categoryNames)) { %>
+            <option value="<%= key %>"><%= name %></option>
+          <% } %>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="seen">הצגה</label>
+        <select id="seen" name="seen">
+          <option value="">כל הכתבות</option>
+          <option value="no">רק שלא נקראו</option>
+          <option value="yes">רק שכבר נקראו</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="sort">מיון</label>
+        <select id="sort" name="sort">
+          <option value="recent">החדשות ביותר</option>
+          <option value="popular">הנצפות ביותר</option>
+        </select>
+      </div>
+    </form>
+
+    <!-- Filled from the API, one card per article. Not a live region: with
+         endless scrolling it would read out every card as it arrived. -->
+    <div class="cards" id="feed"></div>
+
+    <div class="empty" id="feed-empty" hidden>
+      <h2>אין כאן כתבות</h2>
+      <p>נסו לשנות את הסינון, או לחזור מאוחר יותר.</p>
     </div>
-  </div>
+
+    <noscript>
+      <div class="empty">
+        <h2>הפיד צריך JavaScript</h2>
+        <p>הכתבות נטענות מהשרת תוך כדי גלילה, וזה לא עובד בלי JavaScript.</p>
+      </div>
+    </noscript>
+
+    <!-- One card, cloned per article. The data-slot attributes are the script's
+         handles and nothing else, so restyling a card never breaks filling it.
+         Every slot is filled with textContent, never innerHTML: titles and
+         summaries are what a reporter typed. -->
+    <template id="card-template">
+      <article class="card">
+        <!-- alt is empty because the title beside it already says what the
+             article is. The script keeps one of these two and removes the
+             other: the picture, or the grey placeholder when there is none. -->
+        <img class="thumb" data-slot="image" alt="" loading="lazy" hidden>
+        <div class="thumb" data-slot="no-image" aria-hidden="true"></div>
+        <div>
+          <h2><a data-slot="link"></a></h2>
+          <p data-slot="summary"></p>
+          <p class="byline">
+            <span class="who" data-slot="reporter"></span>
+            <span class="sep" aria-hidden="true">·</span><span data-slot="category"></span>
+            <span class="sep" aria-hidden="true">·</span><time data-slot="published"></time>
+            <span class="seen" data-slot="seen" hidden><span class="sep" aria-hidden="true">·</span>נקראה</span>
+          </p>
+        </div>
+      </article>
+    </template>
+  </section>
 
   <aside>
     <!-- The weather widget belongs here. -->

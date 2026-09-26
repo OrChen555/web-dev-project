@@ -259,6 +259,11 @@ textarea[aria-invalid='true'] { border-color: var(--danger); }
 .byline .who { color: var(--ink-soft); font-weight: 600; }
 .byline .sep { color: var(--rule-strong); }
 
+/* The separator and the word travel together so one hidden attribute shows or
+   hides both, which puts them out of reach of the byline's own gap. :not([hidden])
+   because a display rule on a class would otherwise beat the attribute. */
+.byline .seen:not([hidden]) { display: inline-flex; gap: var(--space-2); }
+
 .article-body {
   font-size: var(--text-lg);
   line-height: var(--leading-loose);
