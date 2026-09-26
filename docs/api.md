@@ -183,9 +183,10 @@ GET /api/articles?category=sports&sort=popular&seen=no&limit=20
 Changing `q`, `category`, `sort` or `seen` means starting again without
 `after`. The cursor only knows its position in one ordering of one result set.
 
-**The seen ceiling.** "Seen" means opened on this device in the last 90 days,
-among its 1,000 most recently opened articles. Anything older or further back
-counts as not seen again. The reasoning is in
+**The seen ceiling.** "Seen" means first opened on this device in the last 90
+days, among the 1,000 articles it opened most recently for the first time.
+Anything older or further back counts as not seen again, and opening it again
+does not reset the clock. The reasoning is in
 [data-model.md](./data-model.md#open-questions), question 1.
 
 ### One card

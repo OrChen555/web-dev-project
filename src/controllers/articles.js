@@ -17,9 +17,12 @@ const asCard = (article) => ({
 });
 
 async function list(req, res) {
-  const { articles, nextCursor } = await feed.page(req.query);
+  const { articles, seen, nextCursor } = await feed.page(req.query, req.visitorId);
 
-  res.json({ articles: articles.map(asCard), nextCursor });
+  // The article page leaves this off: by the time a reader is on it, it is seen.
+  const cards = articles.map((article) => ({ ...asCard(article), seen: seen.has(String(article._id)) }));
+
+  res.json({ articles: cards, nextCursor });
 }
 
 async function one(req, res) {

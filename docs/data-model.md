@@ -191,11 +191,12 @@ It cannot live in the browser. The filter combines with category, sorting and
 paging over thousands of articles, so the database has to apply it — which means
 the server has to know the answer.
 
-**The ceiling: the 1,000 most recent, and nothing older than 90 days.** Opening
-an article again bumps `updatedAt`, so "recent" means recently opened, not first
-opened. A TTL index on `updatedAt` deletes rows after 90 days, and the feed
-reads at most the 1,000 newest for a visitor before filtering with `$in` /
-`$nin`. The reasoning is at the bottom of this page, question 1.
+**The ceiling: the 1,000 most recent, and nothing older than 90 days.** Both
+are counted from `createdAt`, the first time a device opened the article.
+Opening it again leaves the row alone, so it does not reset either. A TTL index
+on `createdAt` deletes rows after 90 days, and the feed reads at most the 1,000
+newest for a visitor before filtering with `$in` / `$nin`. Both live in
+`services/seen.js`. The reasoning is at the bottom of this page, question 1.
 
 ---
 
@@ -245,8 +246,8 @@ thousands of articles.
 | `comments` | `visitorId`, `createdAt` | the three per minute limit |
 | `viewbuckets` | `article`, `bucket` unique | the upsert and the chart |
 | `visitorviews` | `visitorId`, `article` unique | recording a view once per device |
-| `visitorviews` | `visitorId`, `updatedAt` desc | the seen filter's 1,000 most recent |
-| `visitorviews` | `updatedAt`, TTL 90 days | expiring old rows |
+| `visitorviews` | `visitorId`, `createdAt` desc | the seen filter's 1,000 most recent |
+| `visitorviews` | `createdAt`, TTL 90 days | expiring old rows |
 
 **Paging is by cursor, not by `skip`.** Two reasons. `skip` reads and discards
 everything before the offset, so deep pages get slower the further you scroll.
@@ -271,16 +272,18 @@ disagrees, this is the paragraph to change.
 ## Open questions
 
 **1. How large may a visitor's seen list get?** Owner: **person 2**, with person
-1. **Answered: both.** The filter uses a visitor's **1,000 most recently opened**
-articles, and rows **expire after 90 days**.
+1. **Answered: both.** The filter uses the **1,000 articles a visitor most recently
+opened for the first time**, and rows **expire 90 days after that first
+opening**.
 
 - The cap bounds the query. `$nin` over 1,000 ids stays cheap; over tens of
   thousands it would not. It is applied when the feed reads the list (newest
-  1,000 by `updatedAt`), so a view is still a single upsert.
+  1,000 by `createdAt`), so a view is still a single upsert.
 - The TTL bounds the storage. Without it a device that stops visiting keeps its
   rows forever. Mongo's TTL index removes them, with no job of ours to run.
-- What a reader notices: an article opened more than 90 days ago, or more than
-  1,000 articles back, shows as not seen again. For a news feed that is the
+- What a reader notices: an article first opened more than 90 days ago, or more
+  than 1,000 articles back, shows as not seen again, even if they reopened it
+  since. For a news feed that is the
   right answer anyway.
 
 **2. What does a feed card actually need?** Owner: **person 2**. **Answered:**

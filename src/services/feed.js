@@ -2,10 +2,13 @@ const mongoose = require('mongoose');
 
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
+const { seenIds } = require('./seen');
 
 // The public feed: which published articles a query string asks for, in what
 // order, and where the next page starts. It takes the query as it arrived and
 // hands back documents, so the shape a reader sees stays with the controller.
+// The visitor is who "seen" means: the ids this device has opened, which filter
+// the feed when asked to and come back either way so each card can be marked.
 
 const MAX_LIMIT = 50;
 
@@ -55,7 +58,7 @@ function decode(cursor, field) {
   return { value, id };
 }
 
-async function page(query) {
+async function page(query, visitorId) {
   const sort = SORTS[query.sort] || SORTS.recent;
   // Anything that is not a whole number above zero falls back to the default.
   // Math.min alone let a negative through, and mongo reads .limit(-4) as "at most
@@ -68,6 +71,13 @@ async function page(query) {
 
   if (query.category) where.category = String(query.category);
   if (query.q) where.$text = { $search: String(query.q) };
+
+  // Read even when the feed is not filtered by it, because every card carries
+  // the flag. Anything other than yes or no does not filter, the same as an
+  // unknown sort.
+  const seen = await seenIds(visitorId);
+  if (query.seen === 'yes') where._id = { $in: seen };
+  if (query.seen === 'no') where._id = { $nin: seen };
 
   if (query.after) {
     const { value: at, id } = decode(String(query.after), sort.field);
@@ -92,6 +102,7 @@ async function page(query) {
 
   return {
     articles,
+    seen: new Set(seen.map(String)),
     nextCursor: found.length > limit && last ? encode(last[sort.field], last._id) : null
   };
 }
