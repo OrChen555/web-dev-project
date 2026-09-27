@@ -162,6 +162,7 @@ async function list(req, res) {
   const last = page[page.length - 1];
 
   // updatedAt is what a reporter's list sorts by, and asDraft does not carry it.
+  // updatedAt is what a reporter's list sorts by, and asDraft does not carry it.
   const shape = mine
     ? (article) => ({ ...asDraft(article), updatedAt: article.updatedAt })
     : asCard;
