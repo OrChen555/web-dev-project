@@ -19,8 +19,8 @@
 
 <div class="cards" id="rows"></div>
 
-<!-- Both are here rather than built in JS, so the screen has something to show
-     before the first response arrives and when it comes back empty. -->
+<!-- In the markup rather than built in JS, so the screen has something before
+     the first response arrives. -->
 <div class="cards" id="loading">
   <article class="card">
     <div class="thumb skeleton block"></div>
@@ -45,8 +45,7 @@
   <p>נסו לשנות את הסינון, או להתחיל לכתוב.</p>
 </div>
 
-<!-- What the observer watches. Reaching it means the reader is near the end of
-     the list, which is when the next page is fetched. -->
+<!-- What the observer watches: reaching it fetches the next page. -->
 <div id="sentinel" aria-hidden="true"></div>
 
 <%- include('../partials/bottom') %>

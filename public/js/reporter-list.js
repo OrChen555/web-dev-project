@@ -43,8 +43,7 @@ const say = (text) => {
   problem.hidden = false;
 };
 
-// A date a reader can read. The API sends ISO in UTC and the formatting belongs
-// here, not there.
+// The API sends ISO in UTC; formatting for a reader belongs here.
 const when = (iso) => new Date(iso).toLocaleDateString('he-IL', {
   day: 'numeric', month: 'long'
 });
@@ -53,7 +52,8 @@ const when = (iso) => new Date(iso).toLocaleDateString('he-IL', {
 // of <img onerror=...> would otherwise run.
 function render(article) {
   const card = document.createElement('article');
-  card.className = 'card';
+
+  card.className = 'card opens';
 
   const thumb = document.createElement('div');
   thumb.className = 'thumb';
@@ -65,8 +65,13 @@ function render(article) {
 
   const body = document.createElement('div');
 
+  // A link rather than a click handler, stretched over the card by the CSS: the
+  // keyboard, the middle button and a new tab all keep working.
   const heading = document.createElement('h2');
-  heading.textContent = article.title;
+  const link = document.createElement('a');
+  link.href = '/reporter/articles/' + article.id;
+  link.textContent = article.title;
+  heading.append(link);
   body.append(heading);
 
   const summary = document.createElement('p');
@@ -98,8 +103,6 @@ function render(article) {
 
   body.append(byline);
 
-  // The editor asked for something. It is the reason this article is back, so it
-  // is on the card rather than a click away.
   if (article.editorNote) {
     const note = document.createElement('div');
     note.className = 'notice bad';
@@ -157,8 +160,7 @@ function restart() {
 
 status.addEventListener('change', restart);
 
-// Fetching as the end of the list comes into view. The observer is cheap where a
-// scroll listener fires on every pixel.
+// An observer rather than a scroll listener, which would fire on every pixel.
 new IntersectionObserver((entries) => {
   if (entries.some((entry) => entry.isIntersecting)) load();
 }, { rootMargin: '300px' }).observe(sentinel);
