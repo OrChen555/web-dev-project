@@ -22,16 +22,23 @@ const asCard = (article) => ({
 });
 
 //asCard for the draft article. (no publishedAt, viewCount, commentCount )
-const asDraft = (article) => ({
-  id: String(article._id),
-  state: article.state,
-  category: article.category,
-  title: article.draft.title,
-  summary: article.draft.summary,
-  body: article.draft.body,
-  image: article.draft.image || null,
-  editorNote: article.editorNote || null
-});
+const asDraft = (article) => {
+  const copy = article.draft || article.published;
+
+  return {
+    id: String(article._id),
+    state: article.state,
+    category: article.category,
+    title: copy.title,
+    summary: copy.summary,
+    body: copy.body,
+    image: copy.image || null,
+
+    // Why it came back. Without it a returned article cannot explain itself, and
+    // the reporter would need a second request to find out.
+    editorNote: article.editorNote || null
+  };
+};
 
 // Picked out one at a time. reporter and draftStatus are missing on purpose: 
 // a field that is never read cannot be forged.
@@ -53,8 +60,12 @@ const DRAFT_FIELDS = ['title', 'summary', 'body', 'image'];
 // so they would see one twice or miss one.
 const SORTS = {
   recent: { field: 'publishedAt', order: -1 },
-  popular: { field: 'viewCount', order: -1 }
+  popular: { field: 'viewCount', order: -1 },
+  updated: { field: 'updatedAt', order: -1 }
 };
+
+// Which of those hold a Date, so that decode knows what encode will have stored.
+const DATE_SORTS = ['publishedAt', 'updatedAt'];
 
 const encode = (value, id) => Buffer.from(JSON.stringify([value, id])).toString('base64url');
 
@@ -77,7 +88,7 @@ function decode(cursor, field) {
     throw new HttpError(400, 'That is not a usable cursor');
   }
 
-  if (field === 'publishedAt') {
+  if (DATE_SORTS.includes(field)) {
     // A string, because that is what encode() produces for a Date and because
     // new Date() is too forgiving to lean on: null and true both come out as
     // 1970 rather than as an Invalid Date, and would page from the wrong end.
@@ -94,18 +105,40 @@ function decode(cursor, field) {
 }
 
 async function list(req, res) {
-  const sort = SORTS[req.query.sort] || SORTS.recent;
+  // The same URL answers two questions: the public feed, and a reporter asking
+  // for their own work. The guard is here rather than on the route because
+  // without the flag this endpoint is public.
+  const mine = req.query.mine === 'true';
+
+  const sort = SORTS[req.query.sort] || (mine ? SORTS.updated : SORTS.recent);
   // Anything that is not a whole number above zero falls back to the default.
   // Math.min alone let a negative through, and mongo reads .limit(-4) as "at most
   // none", so the feed came back empty and looked broken.
   const asked = Number(req.query.limit);
   const limit = Number.isInteger(asked) && asked > 0 ? Math.min(asked, MAX_LIMIT) : 20;
 
-  // Published only. A draft is not a thing the public can reach by any query.
-  const where = { published: { $ne: null } };
+  const where = {};
+
+  if (mine) {
+    if (!req.user) throw new HttpError(401, 'You are not signed in');
+
+    where.reporter = req.user._id;
+
+    if (req.query.status) {
+      const status = String(req.query.status);
+      if (!Article.DRAFT_STATUSES.includes(status)) {
+        throw new HttpError(400, `Status must be one of: ${Article.DRAFT_STATUSES.join(', ')}`);
+      }
+      where.draftStatus = status;
+    }
+    if (req.query.q) throw new HttpError(400, 'Searching your own articles is not supported yet');
+  } else {
+    // Published only. A draft is not a thing the public can reach by any query.
+    where.published = { $ne: null };
+    if (req.query.q) where.$text = { $search: String(req.query.q) };
+  }
 
   if (req.query.category) where.category = String(req.query.category);
-  if (req.query.q) where.$text = { $search: String(req.query.q) };
 
   if (req.query.after) {
     const { value: at, id } = decode(String(req.query.after), sort.field);
@@ -128,18 +161,32 @@ async function list(req, res) {
   const page = found.slice(0, limit);
   const last = page[page.length - 1];
 
+  // updatedAt is what a reporter's list sorts by, and asDraft does not carry it.
+  const shape = mine
+    ? (article) => ({ ...asDraft(article), updatedAt: article.updatedAt })
+    : asCard;
+
   res.json({
-    articles: page.map(asCard),
+    articles: page.map(shape),
     nextCursor: found.length > limit && last ? encode(last[sort.field], last._id) : null
   });
 }
 
 async function one(req, res) {
   const article = await Article.findById(req.params.id).populate('reporter', 'name');
+  if (!article) throw new HttpError(404, 'No such article');
+
+  if (req.user && mayEdit(article, req.user)) {
+    return res.json({
+      ...asDraft(article),
+      published: article.published,
+      draft: article.draft
+    });
+  }
 
   // An article that has never been approved does not exist as far as a reader
   // is concerned, and saying "not published yet" would confirm that it exists.
-  if (!article || !article.published) throw new HttpError(404, 'No such article');
+  if (!article.published) throw new HttpError(404, 'No such article');
 
   res.json({
     ...asCard(article),

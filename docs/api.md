@@ -197,9 +197,27 @@ may call it depends on where the article is:
 > `after`. And what does one card need in the response? Currently assumed:
 > `id, title, summary, image, category, reporter { id, name }, publishedAt`.
 
-> **needs input — persons 4 and 5.** The reporter's own list and the editor's
-> queue are the same collection with a different filter. Say what you need:
-> probably `mine=true` for the reporter and `status=pending` for the editor.
+### A reporter's own articles
+
+```
+GET /api/articles?mine=true[&status=draft|pending|returned]
+    -> 200 { articles, nextCursor }   401 signed out
+```
+
+Their own work in every state, ordered by `updatedAt`. Not by either feed key: an
+article that is not out has no publish date and no views, so every draft would tie.
+`q` is a **400** here — the text index covers `published.title` only.
+
+A row is the working copy where there is one, the published copy otherwise, plus
+`state`, `updatedAt` and `editorNote` — null unless an editor sent it back.
+
+`GET /api/articles/:id` answers **whoever may edit it** — the owner or any editor —
+with that same row plus `published` and `draft` in full. Everybody else gets the
+public copy, or **404** if it is not out; 404 rather than 403, because a 403 would
+confirm the article exists.
+
+> **needs input — person 5.** The editor's queue is the same collection with
+> `status=pending` across every reporter. Say how you want it asked for.
 
 ## Comments — person 1 builds these, person 3 reads them
 
