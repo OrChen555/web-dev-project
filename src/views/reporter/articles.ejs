@@ -1,0 +1,52 @@
+<%- include('../partials/top') %>
+
+<h1>ניהול כתבות</h1>
+<p class="lede">כל מה שכתבתם, מהעדכון האחרון ולאחור.</p>
+
+<div class="toolbar">
+  <div class="field">
+    <label for="status">מצב</label>
+    <select id="status">
+      <option value="">הכל</option>
+      <option value="draft">בהכנה</option>
+      <option value="pending">ממתינה לאישור</option>
+      <option value="returned">הוחזרה לתיקונים</option>
+    </select>
+  </div>
+</div>
+
+<p class="problem" id="problem" role="status" hidden></p>
+
+<div class="cards" id="rows"></div>
+
+<!-- Both are here rather than built in JS, so the screen has something to show
+     before the first response arrives and when it comes back empty. -->
+<div class="cards" id="loading">
+  <article class="card">
+    <div class="thumb skeleton block"></div>
+    <div>
+      <div class="skeleton line"></div>
+      <div class="skeleton line"></div>
+      <div class="skeleton line short"></div>
+    </div>
+  </article>
+  <article class="card">
+    <div class="thumb skeleton block"></div>
+    <div>
+      <div class="skeleton line"></div>
+      <div class="skeleton line"></div>
+      <div class="skeleton line short"></div>
+    </div>
+  </article>
+</div>
+
+<div class="empty" id="empty" hidden>
+  <h2>אין כאן כתבות</h2>
+  <p>נסו לשנות את הסינון, או להתחיל לכתוב.</p>
+</div>
+
+<!-- What the observer watches. Reaching it means the reader is near the end of
+     the list, which is when the next page is fetched. -->
+<div id="sentinel" aria-hidden="true"></div>
+
+<%- include('../partials/bottom') %>
