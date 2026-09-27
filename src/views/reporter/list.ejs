@@ -1,7 +1,10 @@
 <%- include('../partials/top') %>
 
 <h1>ניהול כתבות</h1>
-<p class="lede">כל מה שכתבתם, מהעדכון האחרון ולאחור.</p>
+
+<p class="actions">
+  <button type="button" id="new">כתבה חדשה</button>
+</p>
 
 <div class="toolbar">
   <div class="field">
@@ -47,5 +50,29 @@
 
 <!-- What the observer watches: reaching it fetches the next page. -->
 <div id="sentinel" aria-hidden="true"></div>
+
+<!-- Its own dialog rather than site.confirm, which is text only. The category is
+     asked for up front because it cannot be changed once the article exists. -->
+<dialog id="pick" aria-labelledby="pick-title">
+  <h2 id="pick-title">כתבה חדשה</h2>
+  <p>הקטגוריה נקבעת עכשיו ולא ניתן לשנות אותה אחר כך.</p>
+
+  <div class="field">
+    <label for="pick-category">קטגוריה</label>
+    <select id="pick-category">
+      <% const NAMES = { news: 'חדשות', politics: 'פוליטיקה', economy: 'כלכלה', sports: 'ספורט', culture: 'תרבות', technology: 'טכנולוגיה', health: 'בריאות' }; %>
+      <% for (const value of categories) { %>
+        <option value="<%= value %>"><%= NAMES[value] || value %></option>
+      <% } %>
+    </select>
+  </div>
+
+  <p class="problem" id="pick-problem" role="status" hidden></p>
+
+  <div class="actions">
+    <button type="button" id="pick-go">יצירה</button>
+    <button type="button" class="secondary" id="pick-no">ביטול</button>
+  </div>
+</dialog>
 
 <%- include('../partials/bottom') %>

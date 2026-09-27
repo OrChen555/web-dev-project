@@ -6,6 +6,12 @@ const empty = document.getElementById('empty');
 const problem = document.getElementById('problem');
 const sentinel = document.getElementById('sentinel');
 const status = document.getElementById('status');
+const start = document.getElementById('new');
+const pick = document.getElementById('pick');
+const pickCategory = document.getElementById('pick-category');
+const pickGo = document.getElementById('pick-go');
+const pickNo = document.getElementById('pick-no');
+const pickProblem = document.getElementById('pick-problem');
 
 const STATES = {
   draft: 'בהכנה',
@@ -27,7 +33,7 @@ const CATEGORIES = {
 // The server answers in English, which is right for the log but not for the
 // screen. The wording a person reads is decided here, from the status.
 const WORDING = {
-  400: 'הסינון אינו תקין.',
+  400: 'הבקשה אינה תקינה.',
   401: 'פג תוקף החיבור. יש להתחבר מחדש.',
   403: 'האזור הזה הוא לכתבים.'
 };
@@ -159,6 +165,48 @@ function restart() {
 }
 
 status.addEventListener('change', restart);
+
+// A new article has to arrive complete: the endpoint refuses one without a title,
+// a summary and a body. These stand in until they are typed over, and the title
+// is a real phrase so the row in the list reads as something.
+const PLACEHOLDER = { title: 'כתבה חדשה', summary: '—', body: '—' };
+
+start.addEventListener('click', () => {
+  pickProblem.hidden = true;
+  pick.showModal();
+  pickCategory.focus();
+});
+
+pickNo.addEventListener('click', () => pick.close());
+
+// disabled stops the next click being painted, not one already on its way, so the
+// flag is what actually keeps a double click from filing two articles.
+let filing = false;
+
+pickGo.addEventListener('click', async () => {
+  if (filing) return;
+  filing = true;
+  pickGo.disabled = true;
+  pickProblem.hidden = true;
+
+  const response = await fetch('/api/articles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...PLACEHOLDER, category: pickCategory.value })
+  });
+
+  if (!response.ok) {
+    // Left open, so whatever was picked is still picked.
+    filing = false;
+    pickGo.disabled = false;
+    pickProblem.textContent = explain(response.status);
+    pickProblem.hidden = false;
+    return;
+  }
+
+  const article = await response.json();
+  location.href = '/reporter/articles/' + article.id;
+});
 
 // An observer rather than a scroll listener, which would fire on every pixel.
 new IntersectionObserver((entries) => {

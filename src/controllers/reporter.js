@@ -7,7 +7,8 @@ function list(req, res) {
   res.render('reporter/list', {
     title: 'ניהול כתבות',
     script: '/js/reporter-list.js',
-    statuses: Article.DRAFT_STATUSES
+    statuses: Article.DRAFT_STATUSES,
+    categories: Article.CATEGORIES
   });
 }
 
