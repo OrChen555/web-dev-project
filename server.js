@@ -3,13 +3,18 @@ const logger = require('./src/logger');
 const db = require('./src/db');
 const { ensureAdmin } = require('./src/bootstrap');
 const app = require('./src/app');
+const weather = require('./src/services/weather');
 
 // Nothing is served until the database answers, so that a request never arrives
 // at a route with nothing behind it.
 async function start() {
   await db.connect(config.mongoUri);
   await ensureAdmin();
-  app.listen(config.port, () => logger.info(`the presses are running on http://localhost:${config.port}`));
+  app.listen(config.port, () => {
+    logger.info(`the presses are running on http://localhost:${config.port}`);
+    // Fetched now, so the first reader finds the weather already there.
+    weather.start();
+  });
 }
 
 start().catch((err) => {

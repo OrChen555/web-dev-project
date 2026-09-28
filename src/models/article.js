@@ -75,7 +75,9 @@ articleSchema.index({ category: 1, viewCount: -1, _id: -1 });
 
 articleSchema.index({ reporter: 1 });
 articleSchema.index({ draftStatus: 1 });
-articleSchema.index({ 'published.title': 'text' });
+
+// No text index on the title. Search matches part of a word, which a text index
+// cannot do, so it is a regular expression; see services/feed.js.
 
 module.exports = mongoose.model('Article', articleSchema);
 module.exports.CATEGORIES = CATEGORIES;

@@ -13,7 +13,7 @@ const { seenIds } = require('./seen');
 const MAX_LIMIT = 50;
 
 // Longer than any headline anyone would search for. The cap keeps a stranger
-// from handing the text index a page of words to look up on every request.
+// from handing the database a page of text to look for on every request.
 const MAX_QUERY = 100;
 
 // Paging carries the last row's sort value and its id, not an offset. Skipping
@@ -83,6 +83,32 @@ function searchText(value) {
   return text || undefined;
 }
 
+// Every word the reader typed has to appear somewhere in the title, as part of
+// a word or a whole one: "פינגווין" finds "פינגווינים", and "גשר חיפה" finds a
+// title with both, in any order.
+//
+// Not the text index. It matches whole words only, and Hebrew glues prefixes
+// onto its words, so a search for "גשר" missed "הגשר", "בגשר" and "לגשר". A
+// regular expression matches inside words, at the cost of testing titles one
+// by one; docs/indexes.md has what that costs on 3,000 articles.
+//
+// Escaped, because the words are a stranger's: ".*" or "(a+)+$" would otherwise
+// be run as a pattern, and the second can keep the database busy for seconds.
+//
+// Five Hebrew letters change shape at the end of a word, and a reader typing
+// the start of one writes the final shape: "פינגווין" is how you type your way
+// to "פינגווינים", whose נ is not a ן. Each of the five matches both of its
+// shapes, typed either way.
+const MAX_WORDS = 5;
+const escape = (word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SHAPES = { כ: '[כך]', ך: '[כך]', מ: '[מם]', ם: '[מם]', נ: '[נן]', ן: '[נן]', פ: '[פף]', ף: '[פף]', צ: '[צץ]', ץ: '[צץ]' };
+const pattern = (word) => escape(word).replace(/[כךמםנןפףצץ]/g, (letter) => SHAPES[letter]);
+
+function titleContains(q) {
+  return q.split(/\s+/).slice(0, MAX_WORDS)
+    .map((word) => ({ 'published.title': { $regex: pattern(word), $options: 'i' } }));
+}
+
 async function page(query, visitorId) {
   // Checked against the keys rather than looked up on the object: SORTS.constructor
   // exists too, inherited, and would have reached mongo as a sort on nothing.
@@ -100,7 +126,7 @@ async function page(query, visitorId) {
   const where = { published: { $ne: null } };
 
   if (category) where.category = category;
-  if (q) where.$text = { $search: q };
+  if (q) where.$and = titleContains(q);
 
   // Read even when the feed is not filtered by it, because every card carries
   // the flag. Anything other than yes or no does not filter.
