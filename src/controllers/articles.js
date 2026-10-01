@@ -29,7 +29,8 @@ const asDraft = (article) => ({
   title: article.draft.title,
   summary: article.draft.summary,
   body: article.draft.body,
-  image: article.draft.image || null
+  image: article.draft.image || null,
+  editorNote: article.editorNote || null
 });
 
 // Picked out one at a time. reporter and draftStatus are missing on purpose: 
@@ -223,7 +224,7 @@ async function submit(req, res) {
 
   logger.info('article submitted', { by: req.user.username, article: String(article._id) });
 
-  res.json({ id: String(article._id), state: article.state });
+  res.json(asDraft(article));
 }
 
 module.exports = { list, one, create, update, revise, submit };
