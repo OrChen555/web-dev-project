@@ -1,0 +1,74 @@
+<%- include('../partials/top') %>
+
+<p class="crumb"><a href="/reporter/articles">&rarr; חזרה לניהול כתבות</a></p>
+
+<!-- The id is here rather than read out of the address bar, so one place decides
+     what the page is about. -->
+<section class="panel" id="editor" data-id="<%= id %>">
+  <div class="editor-head">
+    <h1>עריכת כתבה</h1>
+
+    <p class="editor-meta">
+      <span class="status" id="badge" role="status" hidden></span>
+      <span class="saved" id="saved" role="status"></span>
+    </p>
+  </div>
+
+  <!-- Only one of these is ever showing. -->
+  <div class="notice warn" id="locked" hidden>
+    <p>הכתבה ממתינה לאישור עורך ולא ניתן לערוך אותה עד שתחזור.</p>
+  </div>
+
+  <div class="notice bad" id="note" hidden>
+    <p id="note-text"></p>
+  </div>
+
+  <p class="problem" id="problem" role="status" hidden></p>
+
+  <!-- Shown until the first response arrives, so the panel is never an empty box. -->
+  <div id="loading">
+    <div class="skeleton line"></div>
+    <div class="skeleton line"></div>
+    <div class="skeleton line short"></div>
+  </div>
+
+  <form id="form" novalidate hidden>
+    <div class="field">
+      <label for="title">כותרת</label>
+      <input id="title" name="title" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="summary">תקציר</label>
+      <textarea id="summary" name="summary" rows="2"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="body">גוף הכתבה</label>
+      <textarea id="body" name="body" rows="14"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="image">תמונה</label>
+      <div class="with-preview">
+        <input id="image" name="image" type="url" autocomplete="off" placeholder="https://">
+        <span class="thumb" id="preview" aria-hidden="true"></span>
+      </div>
+      <span class="hint">כתובת של תמונה באינטרנט. השאירו ריק כדי להסיר אותה.</span>
+    </div>
+
+    <!-- One category for both versions, so changing it would reach readers
+         without an editor seeing it. -->
+    <div class="field">
+      <label for="category">קטגוריה</label>
+      <input id="category" disabled>
+      <span class="hint">נקבעת בעת יצירת הכתבה.</span>
+    </div>
+
+    <div class="actions">
+      <button type="submit" id="send">שליחה לאישור עורך</button>
+    </div>
+  </form>
+</section>
+
+<%- include('../partials/bottom') %>
