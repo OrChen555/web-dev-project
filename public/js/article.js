@@ -1,6 +1,7 @@
 // Wrapped so that these names belong to this screen only. See site.js.
 (() => {
 const root = document.querySelector('[data-article]');
+const section = document.getElementById('comments');
 const form = document.getElementById('comment-form');
 const author = document.getElementById('author');
 const text = document.getElementById('text');
@@ -16,6 +17,7 @@ const more = document.getElementById('more');
 const counter = document.getElementById('comment-count');
 
 const id = root.dataset.article;
+const isEditor = section.dataset.editor === 'true';
 const api = '/api/articles/' + id;
 
 let cursor = null;
@@ -71,8 +73,112 @@ function render(comment) {
   const body = document.createElement('p');
   body.textContent = comment.text;
 
+  if (isEditor) {
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'quiet';
+    edit.textContent = 'עריכה';
+    edit.addEventListener('click', () => startEdit(comment, item, body, tools));
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'quiet';
+    remove.textContent = 'מחיקה';
+    remove.addEventListener('click', () => confirmRemove(comment, item, remove));
+
+    tools.append(edit, remove);
+    head.append(tools);
+  }
+
   item.append(head, body);
   return item;
+}
+
+// The text turns into a box in place. Saving swaps the whole row for a fresh one
+// built from the server's answer, so what is on screen is what was stored.
+function startEdit(comment, item, body, tools) {
+  const box = document.createElement('textarea');
+  box.rows = 3;
+  box.maxLength = 2000;
+  box.value = comment.text;
+  box.setAttribute('aria-label', 'עריכת התגובה');
+
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.textContent = 'שמירה';
+
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'secondary';
+  cancel.textContent = 'ביטול';
+
+  const warn = document.createElement('p');
+  warn.className = 'problem';
+  warn.setAttribute('role', 'alert');
+  warn.hidden = true;
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.append(save, cancel);
+
+  const editor = document.createElement('div');
+  editor.append(box, warn, actions);
+
+  tools.hidden = true;
+  body.replaceWith(editor);
+  box.focus();
+
+  cancel.addEventListener('click', () => {
+    editor.replaceWith(body);
+    tools.hidden = false;
+  });
+
+  save.addEventListener('click', async () => {
+    save.disabled = true;
+
+    const response = await fetch('/api/comments/' + comment.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: box.value })
+    }).catch(() => null);
+
+    if (!response || !response.ok) {
+      warn.textContent = response && response.status === 400 ? 'התגובה אינה יכולה להיות ריקה.' : 'לא הצלחנו לשמור את התגובה.';
+      warn.hidden = false;
+      save.disabled = false;
+      return;
+    }
+
+    item.replaceWith(render(await response.json()));
+  });
+}
+
+async function confirmRemove(comment, item, button) {
+  const yes = await site.confirm({
+    heading: 'מחיקת תגובה',
+    message: 'התגובה של ' + comment.author + ' תימחק לצמיתות.',
+    action: 'מחיקה',
+    danger: true
+  });
+  if (!yes) return;
+
+  button.disabled = true;
+  const response = await fetch('/api/comments/' + comment.id, { method: 'DELETE' }).catch(() => null);
+
+  if (!response || !response.ok) {
+    button.disabled = false;
+    problemText.textContent = 'לא הצלחנו למחוק את התגובה.';
+    problem.hidden = false;
+    retry.hidden = true;
+    return;
+  }
+
+  item.remove();
+  setCount(-1);
+  empty.hidden = list.children.length > 0;
 }
 
 async function load() {
