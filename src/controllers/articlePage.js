@@ -3,7 +3,8 @@ const views = require('../services/views');
 const { asCard } = require('../services/cards');
 
 // Rendered on the server, with the whole article in the HTML, so that a search
-// engine or a reader with scripts off sees the same page.
+// engine or a reader with scripts off sees the same page. Only the comments
+// need the browser.
 async function page(req, res) {
   // Counted here, while rendering, rather than by a script on the page: a view
   // then counts however the reader arrived and whether or not scripts run. It
@@ -19,6 +20,7 @@ async function page(req, res) {
   res.render('article', {
     title: article.published.title,
     description: article.published.summary,
+    script: '/js/article.js',
     story: { ...asCard(article), body: article.published.body }
   });
 }

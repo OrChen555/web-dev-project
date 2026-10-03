@@ -207,8 +207,13 @@ version, and a table of views in the 24 hours before and after each one. Views
 are stored in fifteen minute buckets and summed on the server into wider
 windows for longer ranges, so the chart never receives more than 400 points.
 
+**The article page** — rendered on the server with the whole article in the
+first HTML response, so it reads the same to a search engine or with scripts
+off. Opening it counts a view. Comments load and post without a reload, a new
+one appears from the answer to its own POST, and a device is held to three a
+minute by the server.
+
 ### Still to come
 
-The article page with its comments, and the reporter's work area. Each is listed
-with its owner at the bottom of
+The reporter's work area. It is listed with its owner at the bottom of
 [HANDOFF.md](./HANDOFF.md), along with everything already decided.
