@@ -308,23 +308,42 @@ All three are editor only, and approve and return go through the state machine,
 which checks the role a second time. An approval of an update moves the working
 copy over the published one and appends to `publishHistory`.
 
-## Comments — person 1 builds these, person 3 reads them
+## Comments — person 3
 
 ```
-GET    /api/articles/:id/comments   -> 200 [ { id, author, text, createdAt } ]
+GET    /api/articles/:id/comments[?limit&after]  -> 200 { comments, nextCursor }
 POST   /api/articles/:id/comments   { author, text } -> 201 the new comment
-DELETE /api/comments/:id            editor only
+PATCH  /api/comments/:id            { text }  editor only -> 200 the comment
+DELETE /api/comments/:id            editor only -> 204
 ```
 
-The POST returns **the one created comment**, so the page can append it to the
+A comment is `{ id, author, text, createdAt, edited }`. `edited` is true once an
+editor has changed the text, so the page can say so.
+
+`author` and `text` are the whole form. Both have to be text and neither may be
+empty once trimmed; `author` is at most 60 characters and `text` at most 2000.
+Anything else is a **400**. The article has to be published: a draft answers
+**404**, the same as an id that names nothing.
+
+The list is **paged by cursor**, newest first, twenty at a time and at most
+fifty. An article can collect hundreds of comments, and the page should not have
+to carry all of them to show the first few.
+
+The POST returns **the one created comment**, so the page can add it to the
 list. The requirement is that a new comment appears without reloading the whole
 list, which means not re-fetching the collection after posting.
 
-Three per minute per device, enforced server side. Over that is **429** with a
-message meant for a reader to see, not a bare status code.
+**Three per minute per device**, enforced server side and counted by `visitorId`
+across every article. Over that is **429**, with a `Retry-After` header saying
+how many seconds until the device may post again. The window slides: it is the
+oldest of the three leaving the last minute that frees a place. A blocked
+attempt is written to the log. Two requests landing in the same instant can
+both pass the check; the limit is there to stop flooding, not to be a ledger.
 
-> **needs input — person 3.** Are `author` and `text` the whole form? Does the
-> list need paging, or does an article show all of its comments?
+Readers have no account, so nobody owns a comment once it is posted. Changing
+one or removing one is moderation and belongs to the editor: **401** signed out,
+**403** for a reporter. `PATCH` takes `text` and nothing else, so the name on a
+comment cannot be rewritten.
 
 ## Views — person 2 built the POST, the article page counts them (person 3), person 5 reads
 

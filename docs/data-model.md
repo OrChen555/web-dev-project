@@ -311,7 +311,8 @@ article), and the buckets are summed on the server into windows wide enough
 to keep the answer at 400 points or fewer. See the views section of `api.md`.
 
 **4. Is the comment author free text or does it need anything else?**
-Owner: **person 3**.
+Owner: **person 3**. **Answered:** free text, up to 60 characters. The form is
+`author` and `text` and nothing else.
 
 **5. The category list.** Owner: **the group**. The enum values are English and
 stable; the Hebrew names live in the views. The schema currently carries
