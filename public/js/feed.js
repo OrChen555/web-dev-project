@@ -145,28 +145,20 @@ function card(article) {
 
   slot('seen').hidden = !article.seen;
 
-  // What the click handler below needs to record the view.
-  node.firstElementChild.dataset.id = article.id;
-
   return node;
 }
 
-// Opening an article counts a view and marks it seen on this device. For now
-// the card sends it on the way out, because the article page does not exist
-// yet. Once it does, the page should record its own views (on the server, when
-// it renders, so that a link from anywhere else counts too) and this goes, or
-// every visit from the feed would count twice.
+// Opening an article counts a view and marks it seen on this device. The
+// article page records that on the server as it renders, so nothing is sent
+// from here: a card that also sent it would count every visit twice.
 //
-// keepalive, so the request survives the page being left. The card is updated
-// at once rather than waiting for the answer: coming Back to the feed usually
-// restores this very page from the browser's memory, not a fresh copy.
+// The card is still updated at once. Coming Back to the feed usually restores
+// this very page from the browser's memory, not a fresh copy, and it would
+// otherwise show the article as unread with its old count.
 function opened(event) {
   const link = event.target.closest('h2 a');
   if (!link || !feed.contains(link)) return;
   const element = link.closest('article');
-
-  fetch('/api/articles/' + encodeURIComponent(element.dataset.id) + '/views', { method: 'POST', keepalive: true })
-    .catch(() => { /* one view lost is not worth telling the reader about */ });
 
   const views = element.querySelector('[data-slot="views"]');
   const count = Number(views.dataset.count) + 1;

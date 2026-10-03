@@ -326,7 +326,7 @@ message meant for a reader to see, not a bare status code.
 > **needs input — person 3.** Are `author` and `text` the whole form? Does the
 > list need paging, or does an article show all of its comments?
 
-## Views — person 2 built the POST, person 3 calls it, person 5 reads
+## Views — person 2 built the POST, the article page counts them (person 3), person 5 reads
 
 ```
 POST   /api/articles/:id/views   -> 204   counts one view
@@ -338,11 +338,17 @@ The POST is `services/views.js`, and does three things together: adds one to
 `viewCount`, adds one to the fifteen minute `viewbuckets` window, and marks the
 article seen for this device. Every opening counts; seen stays one row.
 
-**For now the feed card sends it**, when a reader clicks through, because there
-is no article page yet. When person 3 builds the page, the page should count
-its own views (best on the server, while rendering, so a link from anywhere
-counts) **and the call in `public/js/feed.js` (`opened`) must go**, or every
-visit from the feed counts twice.
+**The article page counts its own views**, on the server, while it renders:
+`controllers/articlePage.js` calls `services/views.js` before it reads the
+article, so the number on the page includes the visit. A view therefore counts
+however the reader arrived (the feed, a shared link, a search engine) and
+whether or not scripts run. A draft or an unknown id is a **404** page and
+counts nothing.
+
+The feed card sends nothing. It still adds one to its own count and shows the
+seen mark as the reader clicks through, because Back usually restores the feed
+from the browser's memory rather than asking again. The POST stays for a client
+that is not the page.
 
 The feed answers with `Cache-Control: no-store`. It carries this device's seen
 flags, and on Back a browser otherwise reuses its cached copy without asking,

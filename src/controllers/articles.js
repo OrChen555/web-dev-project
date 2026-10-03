@@ -188,4 +188,4 @@ async function submit(req, res) {
   res.json(asDraft(article));
 }
 
-module.exports = { list, one, view, create, update, revise, submit };
+module.exports = { list, one, view, create, update, revise, submit, asCard };

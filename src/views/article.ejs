@@ -1,0 +1,36 @@
+<%- include('partials/top') %>
+
+<%
+  const day = new Date(story.publishedAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
+  const paragraphs = story.body.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+%>
+
+<article class="reading" data-article="<%= story.id %>">
+  <nav class="crumb" aria-label="מיקום באתר">
+    <a href="/">הבית</a>
+    <span aria-hidden="true">/</span>
+    <span><%= categoryNames[story.category] || story.category %></span>
+  </nav>
+
+  <header class="article-head">
+    <h1><%= story.title %></h1>
+    <p class="lede"><%= story.summary %></p>
+
+    <p class="byline">
+      <% if (story.reporter) { %><span class="who"><%= story.reporter.name %></span><span class="sep" aria-hidden="true">&middot;</span><% } %>
+      <time datetime="<%= new Date(story.publishedAt).toISOString() %>"><%= day %></time>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <span><span id="views"><%= story.viewCount %></span> צפיות</span>
+    </p>
+  </header>
+
+  <% if (story.image) { %>
+    <figure class="hero"><img src="<%= story.image %>" alt="<%= story.title %>"></figure>
+  <% } %>
+
+  <div class="article-body">
+    <% paragraphs.forEach((text) => { %><p><%= text %></p><% }) %>
+  </div>
+</article>
+
+<%- include('partials/bottom') %>

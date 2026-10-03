@@ -5,13 +5,14 @@ const session = require('./session');
 const users = require('./users');
 const articles = require('./articles');
 const weather = require('./weather');
+const { page: articlePage } = require('../controllers/articlePage');
+const asyncHandler = require('../middlewares/asyncHandler');
 const { home } = require('../controllers/home');
 const { loginPage } = require('../controllers/session');
 const { requireAuth, requireRole, requireAdmin } = require('../middlewares/auth');
 const { page: usersPage } = require('../controllers/users');
 const { list: reporterList, editor: reporterEditor } = require('../controllers/reporter');
 const { queuePage, reviewPage, analyticsPage } = require('../controllers/editor');
-const asyncHandler = require('../middlewares/asyncHandler');
 const { styleguide } = require('../controllers/styleguide');
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.use('/api/weather', weather);
 
 router.get('/', home);
 router.get('/login', loginPage);
+router.get('/articles/:id', asyncHandler(articlePage));
 router.get('/admin/users', requireAdmin, usersPage);
 router.get('/reporter/articles', requireRole('reporter'), reporterList);
 router.get('/reporter/articles/:id', requireRole('reporter'), reporterEditor);
