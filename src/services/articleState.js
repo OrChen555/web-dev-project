@@ -10,8 +10,13 @@ const { HttpError } = require('../errors');
 // The requirements list four transitions and then say that no other transition
 // is permitted. That sentence is this file.
 
+// reporter is a ref: an id until somebody populates it, a whole user document
+// afterwards. Reading _id off it first covers both, where String() alone
+// stringifies the populated document and matches nothing.
+const idOf = (ref) => String((ref && ref._id) || ref);
+
 const owns = (article, actor) =>
-  actor.role === 'reporter' && String(article.reporter) === String(actor._id);
+  actor.role === 'reporter' && idOf(article.reporter) === idOf(actor._id);
 
 const isEditor = (actor) => actor.role === 'editor';
 
@@ -117,4 +122,7 @@ function apply(article, name, actor, note) {
   return article;
 }
 
-module.exports = { apply, stateOf, ACTIONS: Object.keys(ACTIONS) };
+// Only the owner or editor can edit the article. 
+const mayEdit = (article, actor) => owns(article, actor) || isEditor(actor);
+
+module.exports = { apply, stateOf, mayEdit, isEditor, ACTIONS: Object.keys(ACTIONS) };
