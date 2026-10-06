@@ -25,6 +25,13 @@ const SORTS = {
   popular: { field: 'viewCount', order: -1 }
 };
 
+// A reporter's own list. Not one of the feed's keys: an article that is not out
+// has no publish date and no views, so every draft would tie.
+const UPDATED = { field: 'updatedAt', order: -1 };
+
+// Which sort fields hold a Date, so that decode knows what encode will have stored.
+const DATE_SORTS = ['publishedAt', 'updatedAt'];
+
 const encode = (value, id) => Buffer.from(JSON.stringify([value, id])).toString('base64url');
 
 // A cursor comes back from us, but it arrives in a query string like anything
@@ -46,7 +53,7 @@ function decode(cursor, field) {
     throw new HttpError(400, 'That is not a usable cursor');
   }
 
-  if (field === 'publishedAt') {
+  if (DATE_SORTS.includes(field)) {
     // A string, because that is what encode() produces for a Date and because
     // new Date() is too forgiving to lean on: null and true both come out as
     // 1970 rather than as an Invalid Date, and would page from the wrong end.
@@ -83,33 +90,18 @@ function searchText(value) {
   return text || undefined;
 }
 
-async function page(query, visitorId) {
-  // Checked against the keys rather than looked up on the object: SORTS.constructor
-  // exists too, inherited, and would have reached mongo as a sort on nothing.
-  const sort = SORTS[pick(query.sort, Object.keys(SORTS), 'sort') || 'recent'];
-  const category = pick(query.category, Article.CATEGORIES, 'category');
-  const q = searchText(query.q);
+// Anything that is not a whole number above zero falls back to the default.
+// Math.min alone let a negative through, and mongo reads .limit(-4) as "at most
+// none", so the feed came back empty and looked broken.
+function limitOf(value) {
+  const asked = Number(value);
+  return Number.isInteger(asked) && asked > 0 ? Math.min(asked, MAX_LIMIT) : 20;
+}
 
-  // Anything that is not a whole number above zero falls back to the default.
-  // Math.min alone let a negative through, and mongo reads .limit(-4) as "at most
-  // none", so the feed came back empty and looked broken.
-  const asked = Number(query.limit);
-  const limit = Number.isInteger(asked) && asked > 0 ? Math.min(asked, MAX_LIMIT) : 20;
-
-  // Published only. A draft is not a thing the public can reach by any query.
-  const where = { published: { $ne: null } };
-
-  if (category) where.category = category;
-  if (q) where.$text = { $search: q };
-
-  // Read even when the feed is not filtered by it, because every card carries
-  // the flag. Anything other than yes or no does not filter.
-  const seen = await seenIds(visitorId);
-  if (query.seen === 'yes') where._id = { $in: seen };
-  if (query.seen === 'no') where._id = { $nin: seen };
-
-  if (query.after) {
-    const { value: at, id } = decode(String(query.after), sort.field);
+// Runs the query one page at a time, starting strictly past the cursor if any.
+async function run(where, sort, limit, after) {
+  if (after) {
+    const { value: at, id } = decode(String(after), sort.field);
 
     // Strictly past the last row: either the sort value is lower, or it ties
     // and the id is lower. Without the tie-break, articles published in the
@@ -131,9 +123,55 @@ async function page(query, visitorId) {
 
   return {
     articles,
-    seen: new Set(seen.map(String)),
     nextCursor: found.length > limit && last ? encode(last[sort.field], last._id) : null
   };
 }
 
-module.exports = { page };
+async function page(query, visitorId) {
+  // Checked against the keys rather than looked up on the object: SORTS.constructor
+  // exists too, inherited, and would have reached mongo as a sort on nothing.
+  const sort = SORTS[pick(query.sort, Object.keys(SORTS), 'sort') || 'recent'];
+  const category = pick(query.category, Article.CATEGORIES, 'category');
+  const q = searchText(query.q);
+  const limit = limitOf(query.limit);
+
+  // Published only. A draft is not a thing the public can reach by any query.
+  const where = { published: { $ne: null } };
+
+  if (category) where.category = category;
+  if (q) where.$text = { $search: q };
+
+  // Read even when the feed is not filtered by it, because every card carries
+  // the flag. Anything other than yes or no does not filter.
+  const seen = await seenIds(visitorId);
+  if (query.seen === 'yes') where._id = { $in: seen };
+  if (query.seen === 'no') where._id = { $nin: seen };
+
+  const { articles, nextCursor } = await run(where, sort, limit, query.after);
+
+  return { articles, seen: new Set(seen.map(String)), nextCursor };
+}
+
+// A reporter's own work in every state, newest edit first. Drafts are included
+// here and only here, so the reporter is required rather than optional.
+async function mine(query, reporterId) {
+  const where = { reporter: reporterId };
+
+  if (query.status) {
+    const status = String(query.status);
+    if (!Article.DRAFT_STATUSES.includes(status)) {
+      throw new HttpError(400, `Status must be one of: ${Article.DRAFT_STATUSES.join(', ')}`);
+    }
+    where.draftStatus = status;
+  }
+
+  const category = pick(query.category, Article.CATEGORIES, 'category');
+  if (category) where.category = category;
+
+  // The text index covers published.title only, so it would miss every draft.
+  if (query.q) throw new HttpError(400, 'Searching your own articles is not supported yet');
+
+  return run(where, UPDATED, limitOf(query.limit), query.after);
+}
+
+module.exports = { page, mine };
