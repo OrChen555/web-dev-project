@@ -157,15 +157,45 @@ POST   /api/articles         { category, title, summary, body, image } -> 201
 PATCH  /api/articles/:id     saves into the working copy. This is the autosave
 DELETE /api/articles/:id     editor only
 
+POST   /api/articles/:id/revise 
 POST   /api/articles/:id/submit    reporter, own article
 POST   /api/articles/:id/approve   editor
 POST   /api/articles/:id/return    editor, { note } required
 ```
 
+**`revise`** is how an article that is already out gets rewritten. It copies the
+published copy into the working one and answers 200 with it, ready to be edited.
+`published` is left alone, so readers carry on seeing the approved version while
+the rewrite is written and after it is sent — until an editor approves it.
+
+**`PATCH`** is the autosave. Every field is optional and only the ones sent are
+written, so a request carries whatever has changed:
+
+```
+PATCH /api/articles/:id   { title?, summary?, body?, image? }  -> 200 the draft
+```
+
+Every value has to be text: anything else is a **400**, rather than a client's
+mistake being stored as somebody's headline. Emptying `title`, `summary` or `body`
+keeps its previous value, because clearing a box to retype it is not a mistake
+worth refusing mid-sentence; emptying `image` removes it, since it is the one
+field that is not required. **`category` is
+refused with a 400**: there is one on the article rather than one per version, so
+changing it would reach readers with no editor approval. It is chosen at creation.
+
+It writes `draft` and nothing else — never `published`, never `draftStatus`. Who
+may call it depends on where the article is:
+
+| The article | Who may edit it |
+|---|---|
+| `draft` or `returned` | the reporter who owns it, or any editor |
+| `pending` | an editor only. It has been handed over |
+| published with no working copy | nobody: **409**, revise it first |
+
 ### The feed query — person 2
 
 All six are optional and combine freely. Leave one out, or send it empty, and it
-does not filter. Sending `q`, `category` or `sort` twice
+does not filter. Sending `q`, `category`, `sort` or `seen` twice
 (`?category=news&category=sports`) is a **400**.
 
 | Param | Values | Default | Notes |
@@ -173,7 +203,7 @@ does not filter. Sending `q`, `category` or `sort` twice
 | `q` | free text | none | Searches the published title, case-insensitive. Every word must appear, whole or as part of a word, in any order: `פינגווין` finds `פינגווינים`. Final letters (ך ם ן ף ץ) match their other form. Trimmed, cut to 100 characters and 5 words; blank means no search |
 | `category` | one of the category enum | all | An unknown value is a **400** |
 | `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else is a **400** |
-| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. See the ceiling below |
+| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. Anything else is a **400**. See the ceiling below |
 | `limit` | whole number, 1–50 | 20 | Out of range or not a number falls back to 20; above 50 is cut to 50 |
 | `after` | a `nextCursor` | first page | A cursor that does not decode is a **400** |
 
@@ -191,6 +221,10 @@ Anything older or further back counts as not seen again, and opening it again
 does not reset the clock. The reasoning is in
 [data-model.md](./data-model.md#open-questions), question 1.
 
+The 1,000 cap applies to the filter only. Without `seen`, each card's `seen`
+flag is looked up for that page's articles alone, so a reader with a long
+history can see `seen: true` on a card that `?seen=no` would still list.
+
 ### One card
 
 ```json
@@ -198,7 +232,7 @@ does not reset the clock. The reasoning is in
   "id": "66f1c0...",
   "title": "...",
   "summary": "...",
-  "image": "/uploads/... or null",
+  "image": "https://example.com/photo.jpg",
   "category": "sports",
   "reporter": { "id": "66f1b9...", "name": "..." },
   "publishedAt": "2026-09-20T14:07:00.000Z",
@@ -215,9 +249,27 @@ does not reset the clock. The reasoning is in
 - **No `body`.** The feed never sends the article text; `GET /api/articles/:id`
   does, alongside the card fields other than `seen`.
 
-> **needs input — persons 4 and 5.** The reporter's own list and the editor's
-> queue are the same collection with a different filter. Say what you need:
-> probably `mine=true` for the reporter and `status=pending` for the editor.
+### A reporter's own articles
+
+```
+GET /api/articles?mine=true[&status=draft|pending|returned]
+    -> 200 { articles, nextCursor }   401 signed out
+```
+
+Their own work in every state, ordered by `updatedAt`. Not by either feed key: an
+article that is not out has no publish date and no views, so every draft would tie.
+`q` is a **400** here — the text index covers `published.title` only.
+
+A row is the working copy where there is one, the published copy otherwise, plus
+`state`, `updatedAt` and `editorNote` — null unless an editor sent it back.
+
+`GET /api/articles/:id` answers **whoever may edit it** — the owner or any editor —
+with that same row plus `published` and `draft` in full. Everybody else gets the
+public copy, or **404** if it is not out; 404 rather than 403, because a 403 would
+confirm the article exists.
+
+> **needs input — person 5.** The editor's queue is the same collection with
+> `status=pending` across every reporter. Say how you want it asked for.
 
 ## Comments — person 1 builds these, person 3 reads them
 
