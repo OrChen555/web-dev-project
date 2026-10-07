@@ -11,7 +11,7 @@ async function current(req, res) {
   const reading = await weather.current(req.query.city);
 
   if (!reading) {
-    res.set('Retry-After', String(weather.retryAfterSeconds(req.query.city)));
+    res.set('Retry-After', String(weather.retryAfterSeconds()));
     return res.status(503).json({ error: 'The weather is not available right now' });
   }
 
