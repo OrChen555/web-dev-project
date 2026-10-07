@@ -43,6 +43,7 @@ inside whichever request first needed the value.
 | `PORT` | Defaults to 3000 |
 | `NODE_ENV` | Leave as `development` unless the site is behind HTTPS — in production the session cookie is marked secure, and a plain `http://` host will not send it |
 | `SEED_PASSWORD` | What the seeded accounts get. Defaults to `password` |
+| `WEATHER_URL` | Where the weather comes from. Defaults to Open-Meteo, which needs no key; only worth setting to point a test at something else |
 
 ## The commands
 
@@ -97,7 +98,8 @@ than any one of M, V or C.
 
 The details are in [CONTRIBUTING.md](./CONTRIBUTING.md), and the design behind
 the data and the API is in [docs/data-model.md](./docs/data-model.md) and
-[docs/api.md](./docs/api.md).
+[docs/api.md](./docs/api.md). What every feed query costs, and why the indexes
+are what they are, is in [docs/indexes.md](./docs/indexes.md).
 
 ## The style guide
 
@@ -125,7 +127,8 @@ and Docker for the database.
 **Data layer** — five models: users, articles, comments, view buckets and
 visitor views. An article carries its published copy and its working copy at the
 same time, which is what lets readers keep seeing the approved version while a
-rewrite is with the editor. Indexes measured on 3,000 articles.
+rewrite is with the editor. Every feed query explained on 3,000 articles, and
+indexed where the numbers asked for it: [docs/indexes.md](./docs/indexes.md).
 
 **Identity** — passwords hashed with bcrypt and never returned by any endpoint,
 sessions stored in MongoDB so a restart does not sign anybody out, a sign-in
@@ -137,12 +140,23 @@ newsroom it would let anyone grant themselves an editor's powers.
 guide above.
 
 **Articles** — the state machine that owns every transition between the four
-article states, and the public feed: search, category filter, sorting by date or
-popularity, and cursor paging.
+article states, and the feed API: search, a category filter, a seen / not seen
+filter per device, sorting by date or popularity, and cursor paging. A category
+or sort it does not know is refused with a 400 rather than guessed at.
+
+**The feed** — the home page. Cards drawn from the API; search as you type; the
+category, seen and sort filters kept in the address, so a shared link or a
+reload opens the same feed; and endless scrolling, with a "load more" button
+for anyone on a keyboard and a retry when a page fails. Loading, empty, error
+and end-of-feed states, in light and dark, down to a phone.
+
+**Weather** — a sidebar widget for five cities, the choice remembered per
+browser. It reads Open-Meteo through our own endpoint, which keeps each city for
+ten minutes, sends one request however many readers ask at once, and when the
+provider is down serves the last reading, marked as possibly out of date.
 
 ### Still to come
 
-The reader-facing feed and the weather widget, the article page with its
-comments, the reporter's work area, and the editor's queue with the analytics
-chart. Each is listed with its owner at the bottom of
+The article page with its comments, the reporter's work area, and the editor's
+queue with the analytics chart. Each is listed with its owner at the bottom of
 [HANDOFF.md](./HANDOFF.md), along with everything already decided.

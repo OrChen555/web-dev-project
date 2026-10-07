@@ -147,8 +147,8 @@ that sets one is covered.
 
 ## Articles — person 1 builds these, persons 2, 4 and 5 read them
 
-The write side and the state changes are settled. **The query string on the list
-endpoint needs input from person 2**, who knows what the feed requires.
+The write side and the state changes are settled. The query string on the list
+endpoint and the card it returns are set by person 2, below.
 
 ```
 GET    /api/articles         the public feed. Published only
@@ -192,10 +192,62 @@ may call it depends on where the article is:
 | `pending` | an editor only. It has been handed over |
 | published with no working copy | nobody: **409**, revise it first |
 
-> **needs input — person 2.** Which of these does the feed send, and is anything
-> missing: `q`, `category`, `sort=recent|popular`, `seen=yes|no`, `limit`,
-> `after`. And what does one card need in the response? Currently assumed:
-> `id, title, summary, image, category, reporter { id, name }, publishedAt`.
+### The feed query — person 2
+
+All six are optional and combine freely. Leave one out, or send it empty, and it
+does not filter. Sending `q`, `category`, `sort` or `seen` twice
+(`?category=news&category=sports`) is a **400**.
+
+| Param | Values | Default | Notes |
+|---|---|---|---|
+| `q` | free text | none | Searches the published title, case-insensitive. Every word must appear, whole or as part of a word, in any order: `פינגווין` finds `פינגווינים`. Final letters (ך ם ן ף ץ) match their other form. Trimmed, cut to 100 characters and 5 words; blank means no search |
+| `category` | one of the category enum | all | An unknown value is a **400** |
+| `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else is a **400** |
+| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. Anything else is a **400**. See the ceiling below |
+| `limit` | whole number, 1–50 | 20 | Out of range or not a number falls back to 20; above 50 is cut to 50 |
+| `after` | a `nextCursor` | first page | A cursor that does not decode is a **400** |
+
+```
+GET /api/articles?category=sports&sort=popular&seen=no&limit=20
+    -> 200 { "articles": [ card, ... ], "nextCursor": "..." | null }
+```
+
+Changing `q`, `category`, `sort` or `seen` means starting again without
+`after`. The cursor only knows its position in one ordering of one result set.
+
+**The seen ceiling.** "Seen" means first opened on this device in the last 90
+days, among the 1,000 articles it opened most recently for the first time.
+Anything older or further back counts as not seen again, and opening it again
+does not reset the clock. The reasoning is in
+[data-model.md](./data-model.md#open-questions), question 1.
+
+The 1,000 cap applies to the filter only. Without `seen`, each card's `seen`
+flag is looked up for that page's articles alone, so a reader with a long
+history can see `seen: true` on a card that `?seen=no` would still list.
+
+### One card
+
+```json
+{
+  "id": "66f1c0...",
+  "title": "...",
+  "summary": "...",
+  "image": "https://example.com/photo.jpg",
+  "category": "sports",
+  "reporter": { "id": "66f1b9...", "name": "..." },
+  "publishedAt": "2026-09-20T14:07:00.000Z",
+  "viewCount": 1204,
+  "commentCount": 17,
+  "seen": true
+}
+```
+
+- **`seen`** is always present, even when the request did not filter by it, so
+  the card can mark articles the reader has already opened.
+- **`viewCount` and `commentCount`** are shown on the card, and `viewCount` is
+  what `sort=popular` orders by.
+- **No `body`.** The feed never sends the article text; `GET /api/articles/:id`
+  does, alongside the card fields other than `seen`.
 
 ### A reporter's own articles
 
@@ -237,12 +289,27 @@ message meant for a reader to see, not a bare status code.
 > **needs input — person 3.** Are `author` and `text` the whole form? Does the
 > list need paging, or does an article show all of its comments?
 
-## Views — person 1 builds these, person 3 writes, person 5 reads
+## Views — person 2 built the POST, person 3 calls it, person 5 reads
 
 ```
 POST   /api/articles/:id/views   -> 204   counts one view
-GET    /api/articles/:id/views   -> 200   the series for the chart
+                                    404   no published article with that id
+GET    /api/articles/:id/views   -> 200   the series for the chart (not built yet)
 ```
+
+The POST is `services/views.js`, and does three things together: adds one to
+`viewCount`, adds one to the fifteen minute `viewbuckets` window, and marks the
+article seen for this device. Every opening counts; seen stays one row.
+
+**For now the feed card sends it**, when a reader clicks through, because there
+is no article page yet. When person 3 builds the page, the page should count
+its own views (best on the server, while rendering, so a link from anywhere
+counts) **and the call in `public/js/feed.js` (`opened`) must go**, or every
+visit from the feed counts twice.
+
+The feed answers with `Cache-Control: no-store`. It carries this device's seen
+flags, and on Back a browser otherwise reuses its cached copy without asking,
+so a reader returning from an article saw it still unread.
 
 The GET returns the buckets alongside the moments an update was published, so
 that the chart can mark them:
@@ -257,6 +324,59 @@ that the chart can mark them:
 > **needs input — person 5.** Does the chart ask for a date range or always the
 > whole life of the article? For a long range, should buckets be summed into
 > wider windows before they are sent?
+
+## Weather — person 2
+
+```
+GET /api/weather?city=<key>   -> 200 { city, temperature, condition, updatedAt, stale }
+                                 400 for a city not on the list
+                                 503 when there is no reading to give, with Retry-After
+```
+
+```json
+{
+  "city": "tel-aviv",
+  "temperature": 25,
+  "condition": "partly-cloudy",
+  "updatedAt": "2026-09-26T19:30:00.000Z",
+  "stale": false
+}
+```
+
+The widget on the home page reads this, never the provider directly. Going
+through our server lets us swap providers without touching the page, and lets
+one cached answer serve every reader instead of each of them calling out. The
+provider is [Open-Meteo](https://open-meteo.com), which needs no key.
+
+- **`city`** is one of `tel-aviv`, `jerusalem`, `haifa`, `beer-sheva`,
+  `eilat`. Left out or empty means `tel-aviv`. Anything else, including the
+  wrong case or the parameter sent twice, is a **400**. A fixed list because
+  each city is a request to somebody else's service; the Hebrew names belong to
+  the view, the same as categories.
+- **`temperature`** is in °C, a whole number.
+- **`condition`** is one of `clear`, `partly-cloudy`, `cloudy`, `fog`,
+  `drizzle`, `rain`, `snow`, `thunderstorm`. The Hebrew text and the icon
+  are chosen in the view.
+- **`updatedAt`** is when the provider took the reading, not when this
+  request was answered.
+- **Fetched in the background, never inside a reader's request.** The server
+  asks for all five cities in one request when it starts and every 10 minutes
+  after that, and answers readers from memory. However many readers there are,
+  the provider sees 6 requests an hour.
+- **Short timeouts, retried.** From here about one new connection in five to
+  Open-Meteo stalls in its TLS handshake and is reset after ten seconds (curl
+  sees the same, so it is the network, not the code). Each attempt gets 2.5
+  seconds and there are three. A healthy answer takes 0.3–0.5 seconds.
+- **When the provider fails** (all three attempts, an error status, or an answer
+  in a shape we do not recognise), readers keep the last reading. It is marked
+  `stale: true` once it is more than 15 minutes old, the lag the requirements
+  allow, and is dropped after three hours. After a failure the next try is in a
+  minute.
+- **With nothing to serve** the answer is **503** with the usual `{ error }`
+  body and a `Retry-After` header. The widget says the weather is not
+  available, offers a retry, and tries again on its own once `Retry-After` has
+  passed. If it already had a reading, it keeps showing it, marked as possibly
+  out of date.
 
 ---
 
