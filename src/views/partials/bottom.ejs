@@ -13,6 +13,10 @@
     </div>
   </dialog>
   <script src="/js/site.js" defer></script>
-  <% if (typeof script !== 'undefined') { %><script src="<%= script %>" defer></script><% } %>
+  <%# A page names its own script as script, or several as scripts. Deferred
+      scripts run in the order they appear, after the page is parsed. %>
+  <% const pageScripts = [].concat(locals.scripts || [], locals.script || []); %>
+  <% for (const src of pageScripts) { %><script src="<%= src %>" defer></script>
+  <% } %>
 </body>
 </html>

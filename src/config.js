@@ -17,6 +17,10 @@ module.exports = Object.freeze({
   mongoUri: process.env.MONGODB_URI,
   sessionSecret: process.env.SESSION_SECRET,
 
+  // Open-Meteo needs no key. The address is only here so that a test can point
+  // the service at something that fails on purpose.
+  weatherUrl: process.env.WEATHER_URL || 'https://api.open-meteo.com/v1/forecast',
+
   // The one administrator, created at startup and never through a route.
   admin: Object.freeze({
     username: process.env.ADMIN_USERNAME,

@@ -236,18 +236,28 @@ thousands of articles.
 |---|---|---|
 | `users` | `username` unique | login |
 | `users` | `isAdmin` unique, partial on `true` | the single admin |
-| `articles` | `published.publishedAt` desc, `_id` | the feed, newest first, and its cursor |
+| `articles` | `publishedAt` desc, `_id` | the feed, newest first, and its cursor |
 | `articles` | `viewCount` desc, `_id` | the feed sorted by popularity, and its cursor |
-| `articles` | `category` | the category filter |
+| `articles` | `category`, `publishedAt` desc, `_id` | one category, newest first |
+| `articles` | `category`, `viewCount` desc, `_id` | one category, by popularity |
 | `articles` | `reporter` | a reporter's own list |
 | `articles` | `draftStatus` | the editor's queue |
-| `articles` | text on `published.title` | search |
 | `comments` | `article`, `createdAt` | a page of comments |
 | `comments` | `visitorId`, `createdAt` | the three per minute limit |
 | `viewbuckets` | `article`, `bucket` unique | the upsert and the chart |
 | `visitorviews` | `visitorId`, `article` unique | recording a view once per device |
 | `visitorviews` | `visitorId`, `createdAt` desc | the seen filter's 1,000 most recent |
 | `visitorviews` | `createdAt`, TTL 90 days | expiring old rows |
+
+The two category indexes, and the absence of a plain `category` one, come from
+measuring every feed query on 3,000 articles; the numbers are in
+[indexes.md](./indexes.md).
+
+**Search has no index of its own.** It used to be a text index on
+`published.title`, which matches whole words only; in Hebrew, where prefixes
+are glued on, a search for `גשר` missed `הגשר`. It is now a case-insensitive
+regular expression per word, which matches inside words but cannot be served
+from an index. What that costs is in indexes.md.
 
 **Paging is by cursor, not by `skip`.** Two reasons. `skip` reads and discards
 everything before the offset, so deep pages get slower the further you scroll.
