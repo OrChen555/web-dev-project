@@ -42,6 +42,7 @@
 
       <% if (typeof user !== 'undefined' && user) { %>
         <% if (user.isAdmin) { %><a href="/admin/users">ניהול משתמשים</a><% } %>
+        <% if (user.role === 'reporter') { %><a href="/reporter/articles">ניהול כתבות</a><% } %>
         <span class="whoami"><%= user.name %></span>
         <button type="button" class="quiet" id="logout">יציאה</button>
       <% } else { %>

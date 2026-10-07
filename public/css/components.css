@@ -558,3 +558,105 @@ code {
 @media (max-width: 40rem) {
   .wordmark .logo { width: 8.5rem; }
 }
+
+/* The article editor ------------------------------------------------------- */
+
+.crumb {
+  margin-block-end: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.crumb a { color: var(--ink-soft); }
+
+.editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.editor-head h1 { margin-block-end: var(--space-4); }
+
+.editor-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+
+/* Quiet on purpose: it changes on every save, and a save is not news. */
+.saved {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+/* The preview shrinks before the field does: the field is the one being typed in. */
+.with-preview {
+  display: flex;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.with-preview input { flex: 1; }
+
+.with-preview .thumb {
+  flex: 0 0 5.5rem;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-sunk);
+  background-position: center;
+  background-size: cover;
+}
+
+@media (max-width: 40rem) {
+  .with-preview { flex-wrap: wrap; }
+  .with-preview .thumb { flex-basis: 4.5rem; }
+}
+
+/* A whole card that opens its article ---------------------------------------
+   The heading stays a real link and its ::after is stretched over the card, so
+   the keyboard, the middle button and "open in new tab" all keep working where a
+   click handler would break all three. Nothing else here may be positioned, or
+   inset: 0 would resolve against that instead of the card. */
+.card.opens {
+  position: relative;
+  grid-template-columns: 1fr 11rem;
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.card.opens:last-child { border-block-end: 1px solid var(--rule); }
+
+.card.opens h2 a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.card.opens:hover {
+  border-color: var(--rule-strong);
+  background: var(--surface-raised);
+}
+
+/* order rather than markup, because the feed card wants its picture first. */
+.card.opens .thumb {
+  order: 2;
+  align-self: center;
+}
+
+/* Raised above the stretched link, so the note stays selectable. */
+.card.opens .notice {
+  position: relative;
+  max-width: 34rem;
+}
+
+/* After the card breakpoint further up, so it has to repeat the single column. */
+@media (max-width: 40rem) {
+  .card.opens { grid-template-columns: 1fr; }
+  .card.opens .thumb { order: 0; }
+}
