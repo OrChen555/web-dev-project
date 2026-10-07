@@ -19,6 +19,21 @@ async function seenIds(visitorId) {
   return rows.map((row) => row.article);
 }
 
+// Which of these few articles a device has opened, for marking the cards on a
+// page the filter did not choose. One lookup per id on the unique index rather
+// than the whole list, so a long history costs nothing on an unfiltered scroll.
+// It does not apply the thousand cap, so a card far enough back can say seen
+// while ?seen=no still lists it. The TTL still applies: an expired row is gone.
+async function seenAmong(visitorId, articleIds) {
+  if (articleIds.length === 0) return [];
+
+  const rows = await VisitorView.find({ visitorId, article: { $in: articleIds } })
+    .select('article')
+    .lean();
+
+  return rows.map((row) => row.article);
+}
+
 // An upsert, so opening an article twice is still one row, and the first
 // opening is the one createdAt remembers.
 async function markSeen(visitorId, articleId) {
@@ -29,4 +44,4 @@ async function markSeen(visitorId, articleId) {
   );
 }
 
-module.exports = { seenIds, markSeen, MAX_SEEN };
+module.exports = { seenIds, seenAmong, markSeen, MAX_SEEN };

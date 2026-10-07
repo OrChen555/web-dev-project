@@ -195,7 +195,7 @@ may call it depends on where the article is:
 ### The feed query — person 2
 
 All six are optional and combine freely. Leave one out, or send it empty, and it
-does not filter. Sending `q`, `category` or `sort` twice
+does not filter. Sending `q`, `category`, `sort` or `seen` twice
 (`?category=news&category=sports`) is a **400**.
 
 | Param | Values | Default | Notes |
@@ -203,7 +203,7 @@ does not filter. Sending `q`, `category` or `sort` twice
 | `q` | free text | none | Text search on the published title. Trimmed and cut to 100 characters; blank means no search |
 | `category` | one of the category enum | all | An unknown value is a **400** |
 | `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else is a **400** |
-| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. See the ceiling below |
+| `seen` | `yes` \| `no` | both | Against this device's `visitorId`. Anything else is a **400**. See the ceiling below |
 | `limit` | whole number, 1–50 | 20 | Out of range or not a number falls back to 20; above 50 is cut to 50 |
 | `after` | a `nextCursor` | first page | A cursor that does not decode is a **400** |
 
@@ -220,6 +220,10 @@ days, among the 1,000 articles it opened most recently for the first time.
 Anything older or further back counts as not seen again, and opening it again
 does not reset the clock. The reasoning is in
 [data-model.md](./data-model.md#open-questions), question 1.
+
+The 1,000 cap applies to the filter only. Without `seen`, each card's `seen`
+flag is looked up for that page's articles alone, so a reader with a long
+history can see `seen: true` on a card that `?seen=no` would still list.
 
 ### One card
 

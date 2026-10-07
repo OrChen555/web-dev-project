@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
-const { seenIds } = require('./seen');
+const { seenIds, seenAmong } = require('./seen');
 
 // The public feed: which published articles a query string asks for, in what
 // order, and where the next page starts. It takes the query as it arrived and
@@ -132,6 +132,9 @@ async function page(query, visitorId) {
   // exists too, inherited, and would have reached mongo as a sort on nothing.
   const sort = SORTS[pick(query.sort, Object.keys(SORTS), 'sort') || 'recent'];
   const category = pick(query.category, Article.CATEGORIES, 'category');
+  // Refused like the others, so a typo in the client is an error rather than a
+  // filter that quietly does nothing.
+  const seenFilter = pick(query.seen, ['yes', 'no'], 'seen filter');
   const q = searchText(query.q);
   const limit = limitOf(query.limit);
 
@@ -141,13 +144,18 @@ async function page(query, visitorId) {
   if (category) where.category = category;
   if (q) where.$text = { $search: q };
 
-  // Read even when the feed is not filtered by it, because every card carries
-  // the flag. Anything other than yes or no does not filter.
-  const seen = await seenIds(visitorId);
-  if (query.seen === 'yes') where._id = { $in: seen };
-  if (query.seen === 'no') where._id = { $nin: seen };
+  // Filtering needs the whole list before the query runs. Without a filter only
+  // this page's cards need the flag, so they are looked up after it instead.
+  if (seenFilter) {
+    const seen = await seenIds(visitorId);
+    where._id = seenFilter === 'yes' ? { $in: seen } : { $nin: seen };
+
+    const { articles, nextCursor } = await run(where, sort, limit, query.after);
+    return { articles, seen: new Set(seen.map(String)), nextCursor };
+  }
 
   const { articles, nextCursor } = await run(where, sort, limit, query.after);
+  const seen = await seenAmong(visitorId, articles.map((article) => article._id));
 
   return { articles, seen: new Set(seen.map(String)), nextCursor };
 }
