@@ -67,15 +67,26 @@ for every page of the unfiltered feed, in both orders. Nothing changed there.
 
 ## What no index fixes, and why that is acceptable
 
-**A search that matches most of the site.** 24 of the shapes search
-for a word in 3,000 of the 3,005 titles: every one reads **3,000 keys and
-6,000 documents** and sorts in memory, before and after (6.5–9.84 ms).
-A text search has to use the text index, and a text index cannot hand back
-rows in feed order, so every match is read and then sorted. A compound text
-index with `category` in front was considered and rejected: MongoDB then
-refuses any search that does not also name a category. The cost is set by how
-many articles match, not by the size of the site, and a word in every headline
-is the worst case; a search matching one article reads 1 key.
+**Search.** The shapes in the table below that say "text index" were measured
+when search was a text index. It has since been replaced, because a text index
+matches whole words only and missed Hebrew words with a prefix; search is now a
+regular expression per word, matching inside words. Measured again on 3,035
+articles, page 1 of 21:
+
+| Search | Returned | Keys | Docs | ms |
+|---|--:|--:|--:|--:|
+| a common word, newest first | 21 | 678 | 678 | 2 |
+| a common word, in one category | 21 | 127 | 127 | 1 |
+| a word in one title | 1 | 3,038 | 3,038 | 8 |
+| a word in no title, either sort | 0 | 3,038 | 3,038 | 5 |
+
+The planner walks the feed order and tests each title until it has a page, so
+a common word stops early and a rare one reads every article once. The old text
+index read 6,000 documents for a common word; the regular expression reads at
+most one per article, and never sorts in memory. The worst case grows with the
+size of the site, about 2 ms per thousand articles here, which at the 500
+articles of the demo is nothing. If it ever mattered, the fix is a list of
+title fragments on each article with an ordinary index on it.
 
 **Not seen, for someone who has seen the top of the feed.** A `$nin` cannot be
 answered from an index, so the scan passes over every seen article before it

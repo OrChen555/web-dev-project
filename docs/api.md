@@ -200,7 +200,7 @@ does not filter. Sending `q`, `category`, `sort` or `seen` twice
 
 | Param | Values | Default | Notes |
 |---|---|---|---|
-| `q` | free text | none | Text search on the published title. Trimmed and cut to 100 characters; blank means no search |
+| `q` | free text | none | Searches the published title, case-insensitive. Every word must appear, whole or as part of a word, in any order: `פינגווין` finds `פינגווינים`. Final letters (ך ם ן ף ץ) match their other form. Trimmed, cut to 100 characters and 5 words; blank means no search |
 | `category` | one of the category enum | all | An unknown value is a **400** |
 | `sort` | `recent` \| `popular` | `recent` | `popular` is by `viewCount`. Anything else is a **400** |
 | `seen` | `yes` \| `no` | both | Against this device's `visitorId`. Anything else is a **400**. See the ceiling below |
@@ -289,12 +289,27 @@ message meant for a reader to see, not a bare status code.
 > **needs input — person 3.** Are `author` and `text` the whole form? Does the
 > list need paging, or does an article show all of its comments?
 
-## Views — person 1 builds these, person 3 writes, person 5 reads
+## Views — person 2 built the POST, person 3 calls it, person 5 reads
 
 ```
 POST   /api/articles/:id/views   -> 204   counts one view
-GET    /api/articles/:id/views   -> 200   the series for the chart
+                                    404   no published article with that id
+GET    /api/articles/:id/views   -> 200   the series for the chart (not built yet)
 ```
+
+The POST is `services/views.js`, and does three things together: adds one to
+`viewCount`, adds one to the fifteen minute `viewbuckets` window, and marks the
+article seen for this device. Every opening counts; seen stays one row.
+
+**For now the feed card sends it**, when a reader clicks through, because there
+is no article page yet. When person 3 builds the page, the page should count
+its own views (best on the server, while rendering, so a link from anywhere
+counts) **and the call in `public/js/feed.js` (`opened`) must go**, or every
+visit from the feed counts twice.
+
+The feed answers with `Cache-Control: no-store`. It carries this device's seen
+flags, and on Back a browser otherwise reuses its cached copy without asking,
+so a reader returning from an article saw it still unread.
 
 The GET returns the buckets alongside the moments an update was published, so
 that the chart can mark them:
@@ -344,13 +359,19 @@ provider is [Open-Meteo](https://open-meteo.com), which needs no key.
   are chosen in the view.
 - **`updatedAt`** is when the provider took the reading, not when this
   request was answered.
-- **Cached server side for 10 minutes, per city.** Readers who ask while a city
-  is being fetched share that one request.
-- **When the provider fails** (an error, a 4 second timeout, or an answer in a
-  shape we do not recognise), the last reading is served with `stale: true`,
-  for up to three hours after it was taken. After a failure the provider is left
-  alone for a minute, so an outage does not make every page wait out the
-  timeout.
+- **Fetched in the background, never inside a reader's request.** The server
+  asks for all five cities in one request when it starts and every 10 minutes
+  after that, and answers readers from memory. However many readers there are,
+  the provider sees 6 requests an hour.
+- **Short timeouts, retried.** From here about one new connection in five to
+  Open-Meteo stalls in its TLS handshake and is reset after ten seconds (curl
+  sees the same, so it is the network, not the code). Each attempt gets 2.5
+  seconds and there are three. A healthy answer takes 0.3–0.5 seconds.
+- **When the provider fails** (all three attempts, an error status, or an answer
+  in a shape we do not recognise), readers keep the last reading. It is marked
+  `stale: true` once it is more than 15 minutes old, the lag the requirements
+  allow, and is dropped after three hours. After a failure the next try is in a
+  minute.
 - **With nothing to serve** the answer is **503** with the usual `{ error }`
   body and a `Retry-After` header. The widget says the weather is not
   available, offers a retry, and tries again on its own once `Retry-After` has

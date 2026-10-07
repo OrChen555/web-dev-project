@@ -40,6 +40,15 @@ function hebrewDate(date) {
   return format.format(date);
 }
 
+// "1,234 צפיות", with the two small cases Hebrew says differently.
+const NUMBER = new Intl.NumberFormat('he-IL');
+
+function viewsText(count) {
+  if (count === 1) return 'צפייה אחת';
+  if (!count) return 'טרם נצפתה';
+  return NUMBER.format(count) + ' צפיות';
+}
+
 // What each field falls back to. A field at its default is left out of both
 // the request and the address bar, so /?sort=recent never appears: the plain
 // address already means that.
@@ -130,10 +139,46 @@ function card(article) {
     published.textContent = hebrewDate(at);
   }
 
+  const views = slot('views');
+  views.dataset.count = String(article.viewCount || 0);
+  views.textContent = viewsText(article.viewCount);
+
   slot('seen').hidden = !article.seen;
+
+  // What the click handler below needs to record the view.
+  node.firstElementChild.dataset.id = article.id;
 
   return node;
 }
+
+// Opening an article counts a view and marks it seen on this device. For now
+// the card sends it on the way out, because the article page does not exist
+// yet. Once it does, the page should record its own views (on the server, when
+// it renders, so that a link from anywhere else counts too) and this goes, or
+// every visit from the feed would count twice.
+//
+// keepalive, so the request survives the page being left. The card is updated
+// at once rather than waiting for the answer: coming Back to the feed usually
+// restores this very page from the browser's memory, not a fresh copy.
+function opened(event) {
+  const link = event.target.closest('h2 a');
+  if (!link || !feed.contains(link)) return;
+  const element = link.closest('article');
+
+  fetch('/api/articles/' + encodeURIComponent(element.dataset.id) + '/views', { method: 'POST', keepalive: true })
+    .catch(() => { /* one view lost is not worth telling the reader about */ });
+
+  const views = element.querySelector('[data-slot="views"]');
+  const count = Number(views.dataset.count) + 1;
+  views.dataset.count = String(count);
+  views.textContent = viewsText(count);
+  element.querySelector('[data-slot="seen"]').hidden = false;
+}
+
+// click covers a normal click, Enter on the link and Ctrl+click; auxclick the
+// middle button, which opens a tab without firing click.
+feed.addEventListener('click', opened);
+feed.addEventListener('auxclick', (event) => { if (event.button === 1) opened(event); });
 
 // The first page replaces whatever is in the feed: placeholders, cards, the
 // empty message or the error, one at a time. Each call sets every block, so no
