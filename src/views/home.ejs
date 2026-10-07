@@ -52,6 +52,26 @@
          that focus can be moved here after a retry. -->
     <div class="cards" id="feed" role="feed" tabindex="-1" aria-label="כתבות"></div>
 
+    <!-- A failed next page leaves the cards already loaded where they are, so it
+         has its own message rather than the one that replaces the whole feed. -->
+    <div class="notice bad" id="feed-more-error" role="alert" hidden>
+      <p>לא הצלחנו לטעון עוד כתבות.</p>
+      <button type="button" class="secondary" id="feed-more-retry">נסו שוב</button>
+    </div>
+
+    <p class="muted feed-end" id="feed-end" hidden>אלה כל הכתבות.</p>
+
+    <!-- Scrolling loads the next page by itself, but not for someone moving
+         through the page by keyboard or screen reader, and not in a browser
+         without IntersectionObserver. This is the same next page, on request. -->
+    <div class="feed-more" id="feed-more" hidden>
+      <button type="button" class="secondary" id="feed-more-button">טעינת כתבות נוספות</button>
+    </div>
+
+    <!-- Nothing to see. When this scrolls near the bottom of the screen, the next
+         page is asked for. -->
+    <div class="sentinel" id="feed-sentinel" aria-hidden="true"></div>
+
     <div class="empty" id="feed-empty" hidden>
       <h2>אין כאן כתבות</h2>
       <p>נסו לשנות את הסינון, או לחזור מאוחר יותר.</p>
@@ -89,6 +109,7 @@
             <span class="who" data-slot="reporter"></span>
             <span class="sep" aria-hidden="true">·</span><span data-slot="category"></span>
             <span class="sep" aria-hidden="true">·</span><time data-slot="published"></time>
+            <span class="sep" aria-hidden="true">·</span><span data-slot="views"></span>
             <span class="seen" data-slot="seen" hidden><span class="sep" aria-hidden="true">·</span>נקראה</span>
           </p>
         </div>
@@ -109,12 +130,95 @@
     </template>
   </section>
 
-  <aside>
-    <!-- The weather widget belongs here. -->
-    <div class="aside-card">
-      <h2>מזג אוויר</h2>
-      <p class="muted">הווידג'ט ייבנה כאן.</p>
-    </div>
+  <aside class="feed-aside">
+    <!-- Filled by /js/weather.js from /api/weather. Without JavaScript it has
+         nothing to show, so the stylesheet keeps it off the page until the
+         inline script in the head has marked the page as scripted. -->
+    <section class="aside-card weather" id="weather" aria-labelledby="weather-title">
+      <div class="weather-head">
+        <h2 id="weather-title">מזג אוויר</h2>
+        <label class="sr-only" for="weather-city">עיר</label>
+        <select id="weather-city" data-default="<%= defaultCity %>">
+          <% for (const [key, name] of Object.entries(cityNames)) { %>
+            <option value="<%= key %>"><%= name %></option>
+          <% } %>
+        </select>
+      </div>
+
+      <div class="weather-loading" id="weather-loading" aria-hidden="true">
+        <div class="skeleton block weather-skeleton"></div>
+        <div class="skeleton line short"></div>
+      </div>
+
+      <div class="weather-reading" id="weather-reading" hidden>
+        <div class="weather-now">
+          <span class="weather-icon" id="weather-icon" aria-hidden="true"></span>
+          <p class="weather-temp"><span id="weather-temp"></span><span aria-hidden="true">°</span><span class="sr-only">מעלות</span></p>
+        </div>
+        <p class="weather-desc" id="weather-desc"></p>
+        <p class="hint">עודכן <time id="weather-time"></time></p>
+        <p class="hint weather-stale" id="weather-stale" hidden>ייתכן שהנתונים אינם עדכניים. ננסה שוב בקרוב.</p>
+      </div>
+
+      <div class="weather-error" id="weather-error" role="status" hidden>
+        <p class="muted">מזג האוויר לא זמין כרגע.</p>
+        <button type="button" class="secondary" id="weather-retry">נסו שוב</button>
+      </div>
+    </section>
+
+    <!-- One entry per condition the API can report: its Hebrew description and
+         its icon. The script clones the one it needs. The keys are the API's,
+         the words and pictures are ours, the same split as the categories. -->
+    <template id="weather-conditions">
+      <div data-condition="clear" data-label="בהיר">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.5"></circle>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+        </svg>
+      </div>
+      <div data-condition="partly-cloudy" data-label="מעונן חלקית">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8.5" cy="8.5" r="3"></circle>
+          <path d="M8.5 2.5v1.2M3.7 3.7l.9.9M2.5 8.5h1.2M13.3 3.7l-.9.9"></path>
+          <path d="M9 20h8.5a3.5 3.5 0 0 0 0-7h-.3a5 5 0 0 0-9.5 1.3A3 3 0 0 0 9 20z"></path>
+        </svg>
+      </div>
+      <div data-condition="cloudy" data-label="מעונן">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M7 18.5h10.5a4 4 0 0 0 0-8h-.4A6 6 0 0 0 5.6 12 3.3 3.3 0 0 0 7 18.5z"></path>
+        </svg>
+      </div>
+      <div data-condition="fog" data-label="ערפל">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 13h10.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.5 7.6 2.8 2.8 0 0 0 7 13z"></path>
+          <path d="M4 16.5h16M6 20h12"></path>
+        </svg>
+      </div>
+      <div data-condition="drizzle" data-label="טפטוף">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 14h10.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.5 8.6 2.8 2.8 0 0 0 7 14z"></path>
+          <path d="M8 17.5v.5M12 18.5v.5M16 17.5v.5M10 21v.5M14 21v.5"></path>
+        </svg>
+      </div>
+      <div data-condition="rain" data-label="גשם">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 14h10.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.5 8.6 2.8 2.8 0 0 0 7 14z"></path>
+          <path d="M8.5 17l-1 3M12.5 17l-1 3M16.5 17l-1 3"></path>
+        </svg>
+      </div>
+      <div data-condition="snow" data-label="שלג">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 14h10.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.5 8.6 2.8 2.8 0 0 0 7 14z"></path>
+          <path d="M8 17.5l1.5 1.5M9.5 17.5 8 19M14.5 17.5l1.5 1.5M16 17.5 14.5 19M11.3 20.3l1.4 1.4M12.7 20.3l-1.4 1.4"></path>
+        </svg>
+      </div>
+      <div data-condition="thunderstorm" data-label="סופת רעמים">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 14h10.5a3.5 3.5 0 0 0 0-7h-.4A5.5 5.5 0 0 0 6.5 8.6 2.8 2.8 0 0 0 7 14z"></path>
+          <path d="M12.5 15.5 10 19h3.5L11 22.5"></path>
+        </svg>
+      </div>
+    </template>
   </aside>
 </div>
 

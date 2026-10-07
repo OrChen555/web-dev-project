@@ -51,6 +51,9 @@ Two things live in `public/js/site.js` and are shared:
 - **Wrap your page script in `(() => { ... })()`.** Classic scripts share one
   global scope, so two files both declaring `const form` is a syntax error that
   takes the whole page down.
+- **A page names its scripts when it renders:** `script: '/js/login.js'` for
+  one, or `scripts: ['/js/feed.js', '/js/weather.js']` for several. The layout
+  loads them deferred, in that order, after `site.js`.
 
 **A screen that needs a value not in `tokens.css` adds it there first.** Five
 people picking their own greys is how a project ends up looking like five

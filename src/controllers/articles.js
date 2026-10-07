@@ -1,6 +1,7 @@
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
 const feed = require('../services/feed');
+const views = require('../services/views');
 const { apply, mayEdit, isEditor } = require('../services/articleState');
 const logger = require('../logger');
 
@@ -71,6 +72,10 @@ async function list(req, res) {
   // The article page leaves this off: by the time a reader is on it, it is seen.
   const cards = articles.map((article) => ({ ...asCard(article), seen: seen.has(String(article._id)) }));
 
+  // Never kept by the browser. The answer is this device's own (the seen flags)
+  // and changes with every view, and on Back the browser reuses a cached answer
+  // without asking, so a reader returning from an article saw it still unread.
+  res.set('Cache-Control', 'no-store');
   res.json({ articles: cards, nextCursor });
 }
 
@@ -94,6 +99,13 @@ async function one(req, res) {
     ...asCard(article),
     body: article.published.body
   });
+}
+
+// Counts one view by this device. Answers with nothing, since the page that
+// sends it has already moved on.
+async function view(req, res) {
+  if (!(await views.record(req.params.id, req.visitorId))) throw new HttpError(404, 'No such article');
+  res.status(204).end();
 }
 
 // Validates what the reporter typed and creates the article as a draft. 
@@ -176,4 +188,4 @@ async function submit(req, res) {
   res.json(asDraft(article));
 }
 
-module.exports = { list, one, create, update, revise, submit };
+module.exports = { list, one, view, create, update, revise, submit };
