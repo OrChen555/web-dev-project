@@ -13,6 +13,8 @@
     </div>
   </dialog>
   <script src="/js/site.js" defer></script>
+  <%# Libraries a page needs before its own script. defer keeps them in order. %>
+  <% for (const src of locals.scripts || []) { %><script src="<%= src %>" defer></script><% } %>
   <% if (typeof script !== 'undefined') { %><script src="<%= script %>" defer></script><% } %>
 </body>
 </html>

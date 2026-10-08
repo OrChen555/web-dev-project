@@ -61,20 +61,28 @@ inside whichever request first needed the value.
 `npm run seed` **empties every collection first**, so do not run it against
 anything you want to keep.
 
-It creates four accounts and ten articles chosen to cover every state an article
-can be in, including the awkward one: published, with an update waiting for the
-editor. Ten deliberate articles are more useful for development than hundreds of
-random ones, because random copy never produces that case.
+It writes two layers. First, ten articles chosen by hand to cover every state an
+article can be in, including the awkward one: published, with an update waiting
+for the editor. Then **500 generated articles** for the demo, across every
+category and state: drafts, pending, returned, published, published with a
+rewrite waiting, and about 30 that were updated two to four times after going
+out. Comments, and views in fifteen minute buckets from each article's first
+publication to now, shaped so that every update shows a visible lift on the
+analytics chart.
+
+The generator is seeded, so every run writes the same articles in the same
+states; only the view counts vary a little. The times are relative to the moment
+it runs, so **seed again shortly before a demo**, or the "last 24 hours" view of
+the chart will be quiet.
 
 | Account | Role | Password |
 |---|---|---|
 | `admin` | Editor, and the one administrator | `password` |
 | `michal` | Editor | `password` |
-| `dana` | Reporter | `password` |
-| `yonatan` | Reporter | `password` |
+| `dana`, `yonatan`, `noa`, `amir`, `shira`, `eitan` | Reporters | `password` |
 
-Two reporters rather than one, because checking that a reporter cannot touch
-someone else's article needs someone else.
+More than one reporter, because checking that a reporter cannot touch someone
+else's article needs someone else.
 
 ---
 
@@ -140,9 +148,23 @@ guide above.
 article states, and the public feed: search, category filter, sorting by date or
 popularity, and cursor paging.
 
+**Editor's area** (`/editor/articles`) — every article in the system, filtered
+by state (including "updates to published articles"), category and title, sorted
+by last change or views, loaded 20 at a time as the editor scrolls. A review page
+per article with approve and publish, return for corrections with a required
+note, edit (autosaved into the working copy only) and delete (with its comments
+and views). For an update to a published article it shows the published copy and
+the pending one side by side, with the words removed and added marked.
+
+**Impact Analytics** (`/editor/analytics`) — pick a published article and see
+its views over time on a Chart.js line chart, over 24 hours, 7 days, 30 days or
+its whole life, with a dashed marker at every moment an editor approved a
+version, and a table of views in the 24 hours before and after each one. Views
+are stored in fifteen minute buckets and summed on the server into wider
+windows for longer ranges, so the chart never receives more than 400 points.
+
 ### Still to come
 
 The reader-facing feed and the weather widget, the article page with its
-comments, the reporter's work area, and the editor's queue with the analytics
-chart. Each is listed with its owner at the bottom of
+comments, and the reporter's work area. Each is listed with its owner at the bottom of
 [HANDOFF.md](./HANDOFF.md), along with everything already decided.

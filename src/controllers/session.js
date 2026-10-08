@@ -3,8 +3,12 @@ const { COOKIE_NAME, COOKIE_OPTIONS } = require('../session');
 const logger = require('../logger');
 const User = require('../models/user');
 
-// Where each kind of person lands once they are in.
-const landingFor = (user) => (user.isAdmin ? '/admin/users' : '/');
+// Where each kind of person lands once they are in. The requirements send a
+// reporter to their work area and an editor to the management area.
+const landingFor = (user) => {
+  if (user.isAdmin) return '/admin/users';
+  return user.role === 'editor' ? '/editor/articles' : '/reporter/articles';
+};
 
 async function signIn(req, res) {
   // Forced to strings before they go anywhere near a query. A JSON body can

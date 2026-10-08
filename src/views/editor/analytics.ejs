@@ -1,0 +1,83 @@
+<%- include('../partials/top') %>
+
+<h1>סטטיסטיקות צפייה — Impact Analytics</h1>
+<p class="lede">בחרו כתבה כדי לראות את הצפיות בה לאורך זמן. כל קו אנכי הוא רגע שבו עורך אישר ופרסם גרסה, כך שאפשר לראות מה קרה לצפיות לפני העדכון ואחריו.</p>
+
+<div class="with-panel">
+  <section class="panel picker" aria-labelledby="picker-title">
+    <h2 id="picker-title">בחירת כתבה</h2>
+
+    <form id="find" role="search">
+      <div class="field">
+        <label for="q">חיפוש לפי כותרת</label>
+        <input id="q" type="search" autocomplete="off" maxlength="100">
+        <span class="hint">כתבות שפורסמו, הנצפות ביותר קודם.</span>
+      </div>
+    </form>
+
+    <p class="problem" id="picker-problem" role="status" hidden></p>
+    <ul class="choices" id="choices"></ul>
+    <div id="picker-loading" aria-hidden="true">
+      <div class="skeleton line"></div>
+      <div class="skeleton line"></div>
+      <div class="skeleton line short"></div>
+    </div>
+    <p class="muted" id="picker-empty" hidden>אין כתבות שפורסמו בשם הזה.</p>
+    <button type="button" class="secondary" id="more" hidden>עוד כתבות</button>
+  </section>
+
+  <!-- The id of the article picked in a link from elsewhere, so the chart opens
+       on it. -->
+  <section class="panel chart-panel" id="chart-panel" data-selected="<%= selected %>" aria-live="polite">
+    <div class="empty" id="nothing">
+      <h2>עדיין לא נבחרה כתבה</h2>
+      <p>בחרו כתבה מהרשימה כדי לראות את הגרף שלה.</p>
+    </div>
+
+    <div id="report" hidden>
+      <div class="row between">
+        <div>
+          <h2 id="report-title"></h2>
+          <p class="byline" id="report-meta"></p>
+        </div>
+        <a class="button quiet" id="report-link" href="#">לסקירת הכתבה</a>
+      </div>
+
+      <div class="segmented" role="group" aria-label="טווח זמן">
+        <button type="button" class="secondary" data-range="24h" aria-pressed="false">24 שעות</button>
+        <button type="button" class="secondary" data-range="7d" aria-pressed="false">7 ימים</button>
+        <button type="button" class="secondary" data-range="30d" aria-pressed="false">30 יום</button>
+        <button type="button" class="secondary" data-range="all" aria-pressed="true">כל חיי הכתבה</button>
+      </div>
+
+      <p class="problem" id="chart-problem" role="status" hidden></p>
+
+      <div class="chart-box">
+        <canvas id="chart" role="img" aria-label="גרף הצפיות בכתבה לאורך זמן"></canvas>
+      </div>
+      <p class="muted" id="chart-caption"></p>
+
+      <h3>לפני ואחרי כל פרסום</h3>
+      <p class="muted" id="impact-hint"></p>
+      <div class="scrolls">
+        <table class="rows">
+          <thead>
+            <tr>
+              <th>מועד</th>
+              <th>מה פורסם</th>
+              <th>צפיות לפני</th>
+              <th>צפיות אחרי</th>
+              <th>לשעה לפני</th>
+              <th>לשעה אחרי</th>
+              <th>שינוי</th>
+            </tr>
+          </thead>
+          <tbody id="impact"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="impact-empty" hidden>לא היו פרסומים בטווח הזמן שנבחר.</p>
+    </div>
+  </section>
+</div>
+
+<%- include('../partials/bottom') %>

@@ -22,6 +22,11 @@ app.set('views', path.join(__dirname, 'views'));
 // has had its chance. The error middleware last of all, since Express only ever
 // reaches it through next(err).
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Chart.js, the one browser library the requirements name, served from the
+// installed package rather than copied into public/ or pulled from a CDN: npm
+// install is then the only way to get it, and the demo works without internet.
+app.use('/vendor/chart.js', express.static(path.dirname(require.resolve('chart.js'))));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -34,6 +39,12 @@ app.use(visitor);
 // loadUser reads the database, so it goes through asyncHandler like any other
 // async step. A middleware that rejects is as bad as a handler that does.
 app.use(asyncHandler(loadUser));
+
+// The page being shown, so the masthead can mark which of its links you are on.
+app.use((req, res, next) => {
+  res.locals.path = req.path;
+  next();
+});
 
 app.use(routes);
 

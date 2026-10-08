@@ -237,7 +237,8 @@ thousands of articles.
 | `articles` | `viewCount` desc, `_id` | the feed sorted by popularity, and its cursor |
 | `articles` | `category` | the category filter |
 | `articles` | `reporter` | a reporter's own list |
-| `articles` | `draftStatus` | the editor's queue |
+| `articles` | `draftStatus`, `updatedAt` desc, `_id` | the editor's list by state, newest change first |
+| `articles` | `updatedAt` desc, `_id` | the editor's list with no state filter |
 | `articles` | text on `published.title` | search |
 | `comments` | `article`, `createdAt` | a page of comments |
 | `comments` | `visitorId`, `createdAt` | the three per minute limit |
@@ -274,9 +275,10 @@ it. Options: cap the stored history per visitor, or expire rows after some time.
 card shows decide what the list endpoint returns. Title, image, summary,
 category, reporter, published date — anything else?
 
-**3. What does the analytics query return?** Owner: **person 5**. Buckets as
-they are, or summed into larger windows for longer ranges? Does the chart ask
-for a date range, or always the whole life of the article?
+**3. What does the analytics query return?** Owner: **person 5**. **Answered:**
+the chart asks for a range (`24h`, `7d`, `30d` or the whole life of the
+article), and the buckets are summed on the server into windows wide enough
+to keep the answer at 400 points or fewer. See the views section of `api.md`.
 
 **4. Is the comment author free text or does it need anything else?**
 Owner: **person 3**.

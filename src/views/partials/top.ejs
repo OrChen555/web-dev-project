@@ -37,16 +37,29 @@
       <span class="sr-only">The Daily Web</span>
     </a>
 
+    <%
+      // aria-current on the link to the page being shown, so the highlight
+      // follows you around and a screen reader says "current page" too. A link
+      // counts for everything under it: a review page is still the editor area.
+      const here = (href) => {
+        const at = locals.path || '';
+        return (href === '/' ? at === '/' : at.startsWith(href)) ? 'aria-current="page"' : '';
+      };
+    %>
     <nav>
-      <a href="/">הבית</a>
+      <a href="/" <%- here('/') %>>הבית</a>
 
       <% if (typeof user !== 'undefined' && user) { %>
-        <% if (user.isAdmin) { %><a href="/admin/users">ניהול משתמשים</a><% } %>
-        <% if (user.role === 'reporter') { %><a href="/reporter/articles">ניהול כתבות</a><% } %>
+        <% if (user.isAdmin) { %><a href="/admin/users" <%- here('/admin/users') %>>ניהול משתמשים</a><% } %>
+        <% if (user.role === 'reporter') { %><a href="/reporter/articles" <%- here('/reporter/articles') %>>ניהול כתבות</a><% } %>
+        <% if (user.role === 'editor') { %>
+          <a href="/editor/articles" <%- here('/editor/articles') %>>אזור העורך</a>
+          <a href="/editor/analytics" <%- here('/editor/analytics') %>>סטטיסטיקות</a>
+        <% } %>
         <span class="whoami"><%= user.name %></span>
         <button type="button" class="quiet" id="logout">יציאה</button>
       <% } else { %>
-        <a href="/login">כניסה</a>
+        <a href="/login" <%- here('/login') %>>כניסה</a>
       <% } %>
 
       <button type="button" class="icon-button theme-toggle" id="theme" aria-pressed="false" aria-label="מצב כהה">

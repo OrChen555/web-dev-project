@@ -216,8 +216,43 @@ with that same row plus `published` and `draft` in full. Everybody else gets the
 public copy, or **404** if it is not out; 404 rather than 403, because a 403 would
 confirm the article exists.
 
-> **needs input — person 5.** The editor's queue is the same collection with
-> `status=pending` across every reporter. Say how you want it asked for.
+### The editor's list — person 5
+
+```
+GET /api/articles?all=true[&status=…][&category=…][&q=…][&sort=updated|popular][&limit][&after]
+    -> 200 { articles, nextCursor }   401 signed out   403 not an editor
+```
+
+Every article from every reporter. `all=true` is picked out on the route, so the
+public feed never runs the editor check and the editor's list never runs the
+feed's. `status` is one of:
+
+| `status` | What it matches |
+|---|---|
+| `pending` | waiting for an editor — new articles and updates alike |
+| `update` | published **and** a rewrite waiting: the case where the editor compares versions |
+| `draft` | a working copy the reporter has not sent yet |
+| `returned` | sent back with a note |
+| `published` | everything readers can see, with or without a rewrite in progress |
+
+Without `status`, everything. `q` matches part of the title, in either copy, as
+literal text. Sorted by `updatedAt` by default, cursor paged like the feed.
+
+A row is `{ id, state, isLive, hasUpdate, category, title, summary, image,
+reporter { id, name }, updatedAt, publishedAt, viewCount, commentCount,
+editorNote }`, the title and summary from the working copy where there is one.
+
+### The editor's actions — person 5
+
+```
+POST   /api/articles/:id/approve    -> 200 the row       409 not pending
+POST   /api/articles/:id/return     { note } -> 200      400 no note, 409 not pending
+DELETE /api/articles/:id            -> 204               with its comments and views
+```
+
+All three are editor only, and approve and return go through the state machine,
+which checks the role a second time. An approval of an update moves the working
+copy over the published one and appends to `publishHistory`.
 
 ## Comments — person 1 builds these, person 3 reads them
 
@@ -241,7 +276,7 @@ message meant for a reader to see, not a bare status code.
 
 ```
 POST   /api/articles/:id/views   -> 204   counts one view
-GET    /api/articles/:id/views   -> 200   the series for the chart
+GET    /api/articles/:id/views?range=24h|7d|30d|all   -> 200   the series, editor only
 ```
 
 The GET returns the buckets alongside the moments an update was published, so
@@ -249,14 +284,27 @@ that the chart can mark them:
 
 ```json
 {
+  "article": { "id": "…", "title": "…", "category": "news", "publishedAt": "…", "viewCount": 1520 },
+  "range": "7d",
+  "from": "2026-09-13T14:00:00.000Z",
+  "to": "2026-09-20T14:15:00.000Z",
+  "stepMinutes": 30,
+  "total": 1480,
   "buckets": [ { "at": "2026-09-20T14:00:00.000Z", "count": 41 } ],
-  "publications": [ { "at": "2026-09-20T13:45:00.000Z" } ]
+  "publications": [ { "at": "2026-09-20T13:45:00.000Z", "by": "מיכל ברנע", "first": false } ],
+  "impact": [ { "at": "…", "first": false, "before": 120, "after": 310, "beforeRate": 5, "afterRate": 12.9 } ],
+  "impactHours": 24
 }
 ```
 
-> **needs input — person 5.** Does the chart ask for a date range or always the
-> whole life of the article? For a long range, should buckets be summed into
-> wider windows before they are sent?
+`range` defaults to `all`, the whole life of the article from its first
+publication. **The buckets are summed on the server into wider windows** for
+longer ranges, the narrowest of 15, 30, 60, 120, 180, 360, 720 or 1440 minutes that
+keeps the answer at 400 points or fewer, so a month costs the browser the same
+as a day. Windows with no views come back as zeros rather than missing, or the
+line would skip over a quiet stretch. `impact` is the views in the 24 hours
+before and after each publication, and per hour, so an update made this
+morning is compared fairly with one made last week.
 
 ---
 
