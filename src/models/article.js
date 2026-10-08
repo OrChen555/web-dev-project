@@ -63,7 +63,16 @@ articleSchema.virtual('state').get(function () {
 // whenever an article is published mid-scroll.
 articleSchema.index({ publishedAt: -1, _id: -1 });
 articleSchema.index({ viewCount: -1, _id: -1 });
-articleSchema.index({ category: 1 });
+
+// The same two orders within one category. Without them a category page walks
+// the whole feed order and throws away the other six categories as it goes, or
+// the planner reads every article in the category and sorts them in memory.
+// Measured on 3,000 articles: 112 to 431 keys read for a page of 21, against
+// 21 to 22 with these. They also serve a bare category filter, which is why
+// there is no { category: 1 } of its own. The numbers are in docs/indexes.md.
+articleSchema.index({ category: 1, publishedAt: -1, _id: -1 });
+articleSchema.index({ category: 1, viewCount: -1, _id: -1 });
+
 articleSchema.index({ reporter: 1 });
 // The editor's list: every article, newest change first, optionally narrowed to
 // one state. With _id last for the same cursor reason as the feed keys. It also
@@ -71,7 +80,9 @@ articleSchema.index({ reporter: 1 });
 // its own any more.
 articleSchema.index({ draftStatus: 1, updatedAt: -1, _id: -1 });
 articleSchema.index({ updatedAt: -1, _id: -1 });
-articleSchema.index({ 'published.title': 'text' });
+
+// No text index on the title. Search matches part of a word, which a text index
+// cannot do, so it is a regular expression; see services/feed.js.
 
 module.exports = mongoose.model('Article', articleSchema);
 module.exports.CATEGORIES = CATEGORIES;

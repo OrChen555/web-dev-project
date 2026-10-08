@@ -4,7 +4,7 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const load = require('../middlewares/load');
 const { requireAuth, requireRole } = require('../middlewares/auth');
 const Article = require('../models/article');
-const { list, one, create, update, revise, submit } = require('../controllers/articles');
+const { list, one, view, create, update, revise, submit } = require('../controllers/articles');
 const editor = require('../controllers/editor');
 
 const router = express.Router();
@@ -20,6 +20,10 @@ router.get('/', everything, requireRole('editor'), asyncHandler(editor.list));
 // areas and goes through the state machine.
 router.get('/', asyncHandler(list));
 router.get('/:id', asyncHandler(one));
+
+// A guest's view counts as much as anyone's, so this needs no session either.
+// The device comes from the visitor cookie, never from the body.
+router.post('/:id/views', asyncHandler(view));
 
 router.post('/',
   requireAuth,
