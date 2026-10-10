@@ -68,12 +68,10 @@ for the editor. Then **500 generated articles** for the demo, across every
 category and state: drafts, pending, returned, published, published with a
 rewrite waiting, and about 30 that were updated two to four times after going
 out. Comments, and views in fifteen minute buckets from each article's first
-publication to now, shaped so that every update shows a visible lift on the
-analytics chart.
+publication to now, with a burst of views after every update.
 
-The generator is seeded, so every run writes the same articles in the same
-states; only the view counts vary a little. The times are relative to the moment
-it runs, so **seed again shortly before a demo**, or the "last 24 hours" view of
+The articles are random each run. The times are relative to the moment it
+runs, so **seed again shortly before a demo**, or the "last 24 hours" view of
 the chart will be quiet.
 
 | Account | Role | Password |

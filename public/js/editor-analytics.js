@@ -3,16 +3,16 @@
 // runs once, as soon as the browser runs this file. The script tag is defer, so
 // that is after the HTML has been read and every element below already exists.
 (() => {
-const panel = document.getElementById('chart-panel');
+const browse = document.getElementById('browse');
 const find = document.getElementById('find');
 const q = document.getElementById('q');
 const choices = document.getElementById('choices');
 const pickerLoading = document.getElementById('picker-loading');
 const pickerEmpty = document.getElementById('picker-empty');
 const pickerProblem = document.getElementById('picker-problem');
-const more = document.getElementById('more');
-const nothing = document.getElementById('nothing');
+const sentinel = document.getElementById('sentinel');
 const report = document.getElementById('report');
+const back = document.getElementById('back');
 const reportTitle = document.getElementById('report-title');
 const reportMeta = document.getElementById('report-meta');
 const reportLink = document.getElementById('report-link');
@@ -23,16 +23,6 @@ const impactHint = document.getElementById('impact-hint');
 const impactEmpty = document.getElementById('impact-empty');
 const canvas = document.getElementById('chart');
 const ranges = [...document.querySelectorAll('[data-range]')];
-
-const CATEGORIES = {
-  news: 'חדשות',
-  politics: 'פוליטיקה',
-  economy: 'כלכלה',
-  sports: 'ספורט',
-  culture: 'תרבות',
-  technology: 'טכנולוגיה',
-  health: 'בריאות'
-};
 
 const WORDING = {
   400: 'הבקשה אינה תקינה.',
@@ -50,28 +40,31 @@ const stamp = (ms, withDay) => new Date(ms).toLocaleString('he-IL', withDay
   ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
   : { hour: '2-digit', minute: '2-digit' });
 
-async function get(url) {
-  try {
-    const response = await fetch(url);
-    return { ok: response.ok, status: response.status, body: response.ok ? await response.json() : null };
-  } catch {
-    return { ok: false, status: 0, body: null };
-  }
-}
+const day = (iso) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' });
 
-// Picking an article ----------------------------------------------------------
+// The grid of articles ---------------------------------------------------------
 
 let cursor = null;
-let generation = 0;
-let selected = panel.dataset.selected || '';
+let done = false;
+let busy = false;
+let loaded = false;
 
-function choice(article) {
+// Every request carries a number, and an answer to anything but the latest is
+// dropped: typing a word sends a search per letter, and an early one arriving
+// last would otherwise paint its cards under the final query.
+let generation = 0;
+
+// One card. A real button, so the keyboard reaches it and Enter opens it.
+// textContent throughout: a title is whatever its author typed.
+function card(article) {
   const li = document.createElement('li');
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'choice';
-  button.dataset.id = article.id;
-  button.setAttribute('aria-pressed', String(article.id === selected));
+
+  const thumb = document.createElement('span');
+  thumb.className = 'choice-thumb';
+  if (article.image) thumb.style.backgroundImage = 'url("' + encodeURI(article.image) + '")';
 
   const title = document.createElement('span');
   title.className = 'choice-title';
@@ -79,67 +72,87 @@ function choice(article) {
 
   const meta = document.createElement('span');
   meta.className = 'choice-meta';
-  meta.textContent = number(article.viewCount) + ' צפיות · ' + (CATEGORIES[article.category] || article.category);
+  meta.textContent = (site.categories[article.category] || article.category)
+    + ' · ' + number(article.viewCount) + ' צפיות'
+    + (article.publishedAt ? ' · ' + day(article.publishedAt) : '');
 
-  button.append(title, meta);
+  button.append(thumb, title, meta);
   button.addEventListener('click', () => pick(article.id));
   li.append(button);
   return li;
 }
 
-async function list(fresh) {
-  const mine = ++generation;
-  if (fresh) {
-    cursor = null;
-    choices.replaceChildren();
-  }
+async function list() {
+  if (busy || done) return;
+  busy = true;
+  const mine = generation;
 
   pickerProblem.hidden = true;
-  pickerEmpty.hidden = true;
   pickerLoading.hidden = false;
-  more.hidden = true;
 
-  const params = new URLSearchParams({ all: 'true', status: 'published', sort: 'popular', limit: '15' });
+  const params = new URLSearchParams({ all: 'true', status: 'published', sort: 'popular', limit: '24' });
   if (q.value.trim()) params.set('q', q.value.trim());
   if (cursor) params.set('after', cursor);
 
-  const answer = await get('/api/articles?' + params);
-
-  // A later search has been typed since; its answer is the one that counts.
+  const answer = await site.request('GET', '/api/articles?' + params);
   if (mine !== generation) return;
+
+  busy = false;
   pickerLoading.hidden = true;
 
   if (!answer.ok) {
+    done = true;
     pickerProblem.textContent = answer.status ? explain(answer.status) : 'אין חיבור לשרת.';
     pickerProblem.hidden = false;
     return;
   }
 
-  for (const article of answer.body.articles) choices.append(choice(article));
+  for (const article of answer.body.articles) choices.append(card(article));
   cursor = answer.body.nextCursor;
-  more.hidden = !cursor;
+  done = !cursor;
+  loaded = true;
   pickerEmpty.hidden = choices.children.length > 0;
+
+  // A short page can leave the sentinel on screen, and the observer only fires
+  // on a crossing. Asking again here is what keeps a tall window filling.
+  if (!done && !browse.hidden && sentinel.getBoundingClientRect().top < window.innerHeight) list();
+}
+
+function restart() {
+  generation++;
+  busy = false;
+  done = false;
+  cursor = null;
+  choices.replaceChildren();
+  pickerEmpty.hidden = true;
+  list();
 }
 
 let typing;
 q.addEventListener('input', () => {
   clearTimeout(typing);
-  typing = setTimeout(() => list(true), 300);
+  typing = setTimeout(restart, 300);
 });
 
 find.addEventListener('submit', (event) => {
   event.preventDefault();
   clearTimeout(typing);
-  list(true);
+  restart();
 });
 
-more.addEventListener('click', () => list(false));
+// An observer rather than a scroll listener, which would fire on every pixel.
+// While the chart is showing the grid is hidden, and nothing is loaded for it.
+new IntersectionObserver((entries) => {
+  if (!browse.hidden && entries.some((entry) => entry.isIntersecting)) list();
+}, { rootMargin: '400px' }).observe(sentinel);
 
 // The chart -------------------------------------------------------------------
 
 let range = 'all';
 let chart = null;
 let data = null;
+// Counts chart requests. If you click 7d and then 30d quickly, the 7d answer can
+// arrive last; each request remembers its number, and only the newest one draws.
 let drawing = 0;
 
 // Every colour comes from tokens.css, read at the moment of drawing, so the
@@ -280,7 +293,7 @@ async function show() {
   const mine = ++drawing;
   chartProblem.hidden = true;
 
-  const answer = await get('/api/articles/' + encodeURIComponent(selected) + '/views?range=' + range);
+  const answer = await site.request('GET', '/api/articles/' + encodeURIComponent(selected) + '/views?range=' + range);
   if (mine !== drawing) return;
 
   if (!answer.ok) {
@@ -292,7 +305,7 @@ async function show() {
   data = answer.body;
 
   reportTitle.textContent = data.article.title;
-  reportMeta.textContent = (CATEGORIES[data.article.category] || data.article.category)
+  reportMeta.textContent = (site.categories[data.article.category] || data.article.category)
     + ' · ' + number(data.article.viewCount) + ' צפיות בסך הכל'
     + ' · ' + data.publications.length + ' פרסומים בטווח';
   reportLink.href = '/editor/articles/' + data.article.id;
@@ -300,32 +313,59 @@ async function show() {
   caption.textContent = number(data.total) + ' צפיות בטווח שנבחר, בחלונות של ' + windowName(data.stepMinutes) + '. '
     + 'הקווים המקווקווים הם רגעי האישור והפרסום.';
 
-  nothing.hidden = true;
-  report.hidden = false;
   draw();
   table();
 }
 
-function pick(id) {
-  selected = id;
-  for (const button of choices.querySelectorAll('.choice')) {
-    button.setAttribute('aria-pressed', String(button.dataset.id === id));
-  }
+// Switching views ---------------------------------------------------------------
 
-  // In the address bar, so a reload or a shared link opens the same chart.
-  history.replaceState(null, '', '?article=' + encodeURIComponent(id));
+let selected = report.dataset.selected || '';
 
-  // The list is long, and a pick far down it would otherwise redraw a chart
-  // that is off the top of the screen, so the click looks like it did nothing.
-  // Only when the chart is out of sight, and without the animation for anybody
-  // who has asked their system for less motion.
-  if (panel.getBoundingClientRect().top < 0) {
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    panel.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
-  }
+// Where the grid was scrolled to, so coming back from a chart lands on the same
+// cards rather than at the top of a long list.
+let gridScroll = 0;
 
+function showGrid() {
+  report.hidden = true;
+  browse.hidden = false;
+  if (!loaded) list();
+  window.scrollTo(0, gridScroll);
+}
+
+function showChart() {
+  browse.hidden = true;
+  report.hidden = false;
+  window.scrollTo(0, 0);
   show();
 }
+
+// A new entry in the history, so the browser's own back button returns to the
+// grid, and the address bar names the article so a reload opens the same chart.
+function pick(id) {
+  gridScroll = window.scrollY;
+  selected = id;
+  history.pushState({ article: id }, '', '?article=' + encodeURIComponent(id));
+  showChart();
+}
+
+// The browser's back and forward buttons, between the grid and a chart.
+window.addEventListener('popstate', () => {
+  selected = new URLSearchParams(location.search).get('article') || '';
+  if (selected) showChart(); else showGrid();
+});
+
+// The page's own back button. After a pick it is the same as the browser's;
+// when the page was opened straight on a chart there is nothing to go back to,
+// so it swaps to the grid and rewrites the address instead.
+back.addEventListener('click', () => {
+  if (history.state && history.state.article) {
+    history.back();
+    return;
+  }
+  history.replaceState(null, '', location.pathname);
+  selected = '';
+  showGrid();
+});
 
 for (const button of ranges) {
   button.addEventListener('click', () => {
@@ -337,9 +377,8 @@ for (const button of ranges) {
 
 // The toggle in the masthead changes data-theme, and a canvas does not restyle
 // itself, so the chart is drawn again in the new colours.
-new MutationObserver(() => { if (chart && data) draw(); })
+new MutationObserver(() => { if (chart && data && !report.hidden) draw(); })
   .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-list(true);
-if (selected) show();
+if (selected) showChart(); else showGrid();
 })();

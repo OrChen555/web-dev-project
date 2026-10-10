@@ -27,22 +27,9 @@ const SLOT = ViewBucket.WINDOW_MINUTES * MINUTE;
 const NOW = Date.now();
 const daysAgo = (n) => new Date(NOW - n * DAY);
 
-// A seeded generator rather than Math.random, so every run writes the same
-// articles in the same states, and the article somebody picked for the demo
-// yesterday is still there today. The view counts differ a little from run to
-// run, because the curves run up to the present.
-//
-// The simplest one there is: multiply by a fixed number and keep the remainder.
-// Each value comes from the one before it, so the same start gives the same list.
-function generator(seed) {
-  let state = seed;
-  return () => {
-    state = (state * 16807) % 2147483647;
-    return state / 2147483647;
-  };
-}
-
-const random = generator(20261007);
+// Plain Math.random: the data only has to cover every case, not come out the
+// same twice.
+const random = Math.random;
 const between = (low, high) => low + random() * (high - low);
 const whole = (low, high) => Math.floor(between(low, high + 1));
 const pick = (list) => list[Math.floor(random() * list.length)];
@@ -174,9 +161,11 @@ async function conversation(articles) {
 // The generated five hundred --------------------------------------------------------
 
 // How many of each, so that every filter on every screen has something in it.
-// "update" is published with a rewrite waiting for the editor; "revising" is
-// published with the reporter still working on the rewrite; "revision-returned"
-// is a rewrite the editor sent back.
+// The last four are already published, so readers keep seeing the published
+// copy while a rewrite of it is somewhere in the process:
+//   update             the rewrite was sent and waits for the editor (pending)
+//   revising           the reporter is still writing the rewrite (draft)
+//   revision-returned  the editor sent the rewrite back with a note (returned)
 const MIX = {
   draft: 30,
   pending: 30,
@@ -245,12 +234,13 @@ function publications(updates) {
   if (!updates) return [onTheHour(NOW - HOUR - 45 * DAY * random() ** 2)];
 
   // The updates share out the time between the first publication and two hours
-  // ago in equal slices, each landing somewhere in the second half of its slice.
-  const first = NOW - between(3, 12) * DAY;
+  // ago in equal slices, each landing in the last quarter of its slice, so they
+  // spread out over the article's life rather than bunching up at the start.
+  const first = NOW - between(5, 12) * DAY;
   const slice = (NOW - 2 * HOUR - first) / updates;
 
   const times = [first];
-  for (let i = 1; i <= updates; i++) times.push(first + slice * (i - between(0, 0.5)));
+  for (let i = 1; i <= updates; i++) times.push(first + slice * (i - between(0, 0.25)));
 
   return times.map(onTheHour);
 }
@@ -271,7 +261,7 @@ function traffic(articleId, times, featured) {
   const peak = featured ? between(18, 45) : between(0.5, 15);
   const fade = between(8, 30) * HOUR;
   const steady = featured ? between(0.4, 1.5) : 0;
-  const bursts = times.slice(1).map((at) => ({ at, size: peak * between(0.5, 1.4), fade: between(4, 14) * HOUR }));
+  const bursts = times.slice(1).map((at) => ({ at, size: peak * between(0.9, 1.4), fade: between(4, 14) * HOUR }));
 
   const rows = [];
   let total = 0;
@@ -326,21 +316,19 @@ function prepare(fields, createdAt, updatedAt) {
 function demo(staff) {
   const editors = [staff.michal, staff.admin];
   const kinds = shuffle(Object.entries(MIX).flatMap(([kind, n]) => Array(n).fill(kind)));
-
-  // The articles with several updates are picked from the published and update
-  // kinds, so some of them also have a further rewrite waiting.
   let updatedLeft = UPDATED;
 
   const articles = [];
-  const live = [];
+  const buckets = [];
+  const talk = [];
 
   kinds.forEach((kind, n) => {
     const category = Article.CATEGORIES[n % Article.CATEGORIES.length];
-    const reporter = pick(staff.reporters);
     const first = { ...story(category), image: image(n) };
-    const fields = { _id: new mongoose.Types.ObjectId(), reporter: reporter._id, category };
+    const fields = { _id: new mongoose.Types.ObjectId(), reporter: pick(staff.reporters)._id, category };
 
-    if (['draft', 'pending', 'returned'].includes(kind)) {
+    // Never published: only a working copy, in the state the mix asked for.
+    if (kind === 'draft' || kind === 'pending' || kind === 'returned') {
       const created = NOW - between(0.2, 9) * DAY;
       const touched = created + random() * (NOW - created);
 
@@ -352,6 +340,8 @@ function demo(staff) {
       return;
     }
 
+    // Published. A few dozen of them updated two to four times: every update
+    // with a rewrite waiting, plus some of the plain published ones.
     const featured = updatedLeft > 0 && (kind === 'update' || chance(0.1));
     if (featured) updatedLeft--;
 
@@ -368,24 +358,14 @@ function demo(staff) {
 
     let touched = times[times.length - 1];
 
+    // A rewrite in progress: the working copy, in the state its kind names.
     if (kind !== 'published') {
       fields.draft = rewrite(copy, category, n + times.length);
       fields.draftStatus = { update: 'pending', revising: 'draft', 'revision-returned': 'returned' }[kind];
-      touched = touched + random() * (NOW - touched);
+      touched += random() * (NOW - touched);
       if (kind === 'revision-returned') fields.editorNote = { text: pick(NOTES), by: pick(editors)._id, at: new Date(touched) };
     }
 
-    live.push({ fields, times, featured, created: times[0] - between(1, 48) * HOUR, touched });
-  });
-
-  // Views and comments in a second pass. How many random numbers a curve uses
-  // depends on how long the article has been out, which depends on when the
-  // seed runs; drawn in the loop above, that would change every article after
-  // the first one from run to run. Here only the numbers change, not the copy.
-  const buckets = [];
-  const talk = [];
-
-  for (const { fields, times, featured, created, touched } of live) {
     const views = traffic(fields._id, times, featured);
     buckets.push(...views.rows);
     fields.viewCount = views.total;
@@ -394,8 +374,8 @@ function demo(staff) {
     talk.push(...said);
     fields.commentCount = said.length;
 
-    articles.push(prepare(fields, created, touched));
-  }
+    articles.push(prepare(fields, times[0] - between(1, 48) * HOUR, touched));
+  });
 
   return { articles, buckets, talk };
 }
@@ -466,8 +446,6 @@ async function run() {
   const picked = await write(plan(staff), staff.michal);
   const pickedComments = await conversation(picked);
 
-  // Before the traffic for the hand-picked ten, which draws a different number
-  // of random values depending on the time of day; see demo().
   const generated = demo(staff);
   const pickedViews = await trafficForPlan(picked);
 

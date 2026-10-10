@@ -12,9 +12,9 @@
 
 <p class="crumb"><a href="/editor/articles">&rarr; חזרה לאזור העורך</a></p>
 
-<!-- The id and state are here rather than read out of the address bar or the
-     badges, so one place decides what the page is about. -->
-<article class="panel" id="review" data-id="<%= id %>" data-state="<%= state %>">
+<!-- What editor-review.js needs to know: which article this is, and whether it
+     is out with no working copy yet (then the first save has to make one). -->
+<article class="panel" id="review" data-id="<%= id %>" data-needs-revise="<%= work ? 'false' : 'true' %>">
   <header class="editor-head">
     <div>
       <h1><%= copy.title %></h1>
@@ -24,7 +24,7 @@
         <span class="sep">&middot;</span>
         <span class="who"><%= article.reporter ? article.reporter.name : 'כתב שנמחק' %></span>
         <span class="sep">&middot;</span>
-        <span><%= names[article.category] || article.category %></span>
+        <span><%= categoryNames[article.category] || article.category %></span>
         <span class="sep">&middot;</span>
         <span>שינוי אחרון: <time datetime="<%= article.updatedAt.toISOString() %>"><%= when(article.updatedAt) %></time></span>
         <% if (live) { %>
@@ -67,9 +67,7 @@
       <button type="button" id="approve"><%= hasUpdate ? 'אישור ופרסום העדכון' : 'אישור ופרסום' %></button>
       <button type="button" class="secondary" id="return">החזרה לתיקונים</button>
     <% } %>
-    <% if (work) { %>
-      <button type="button" class="secondary" id="edit">עריכה</button>
-    <% } %>
+    <button type="button" class="secondary" id="edit">עריכה</button>
     <% if (live) { %>
       <a class="button secondary" href="/editor/analytics?article=<%= id %>">גרף צפיות</a>
       <a class="button secondary" href="/articles/<%= id %>">צפייה באתר</a>
@@ -80,27 +78,34 @@
   <!-- The editor's own changes go into the working copy, through the same
        autosave the reporter uses. It never touches what readers see. -->
   <form class="edit-copy" id="form" novalidate hidden>
-    <h2>עריכת הגרסה <%= hasUpdate ? 'החדשה' : '' %></h2>
-    <p class="muted">השינויים נשמרים אוטומטית לגרסה שבעבודה. הגרסה המפורסמת לא משתנה עד לאישור. <span class="saved" id="saved" role="status"></span></p>
+    <h2><%= work ? (hasUpdate ? 'עריכת הגרסה החדשה' : 'עריכת הכתבה') : 'עריכת כתבה שפורסמה' %></h2>
+    <p class="muted">
+      <% if (live && !work) { %>
+        השינויים יישמרו אוטומטית כעדכון שממתין לאישור. הקוראים ממשיכים לראות את הגרסה המפורסמת עד שתאשרו את העדכון.
+      <% } else { %>
+        השינויים נשמרים אוטומטית לגרסה שבעבודה.<%= live ? ' הגרסה המפורסמת לא משתנה עד לאישור.' : '' %>
+      <% } %>
+      <span class="saved" id="saved" role="status"></span>
+    </p>
 
     <div class="field">
       <label for="title">כותרת</label>
-      <input id="title" name="title" autocomplete="off" value="<%= work ? work.title : '' %>">
+      <input id="title" name="title" autocomplete="off" value="<%= copy.title %>">
     </div>
 
     <div class="field">
       <label for="summary">תקציר</label>
-      <textarea id="summary" name="summary" rows="2"><%= work ? work.summary : '' %></textarea>
+      <textarea id="summary" name="summary" rows="2"><%= copy.summary %></textarea>
     </div>
 
     <div class="field">
       <label for="body">גוף הכתבה</label>
-      <textarea id="body" name="body" rows="14"><%= work ? work.body : '' %></textarea>
+      <textarea id="body" name="body" rows="14"><%= copy.body %></textarea>
     </div>
 
     <div class="field">
       <label for="image">תמונה</label>
-      <input id="image" name="image" type="url" autocomplete="off" placeholder="https://" value="<%= work && work.image ? work.image : '' %>">
+      <input id="image" name="image" type="url" autocomplete="off" placeholder="https://" value="<%= copy.image || '' %>">
       <span class="hint">כתובת של תמונה באינטרנט. השאירו ריק כדי להסיר אותה.</span>
     </div>
 

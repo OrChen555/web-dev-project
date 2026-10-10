@@ -21,16 +21,6 @@ const STATES = {
   published: 'פורסמה'
 };
 
-const CATEGORIES = {
-  news: 'חדשות',
-  politics: 'פוליטיקה',
-  economy: 'כלכלה',
-  sports: 'ספורט',
-  culture: 'תרבות',
-  technology: 'טכנולוגיה',
-  health: 'בריאות'
-};
-
 // The server answers in English, which is right for the log but not for the
 // screen. The wording a person reads is decided here, from the status.
 const WORDING = {
@@ -79,7 +69,7 @@ function render(article) {
   tr.append(title);
 
   tr.append(cell(article.reporter ? article.reporter.name : '—'));
-  tr.append(cell(CATEGORIES[article.category] || article.category));
+  tr.append(cell(site.categories[article.category] || article.category));
 
   // An article that is out and has a rewrite waiting gets both badges: what the
   // readers see, and what is waiting on the editor. Colour is never the only
@@ -155,30 +145,23 @@ async function load() {
   const params = query();
   if (cursor) params.set('after', cursor);
 
-  let response;
-  try {
-    response = await fetch('/api/articles?' + params);
-  } catch {
-    response = null;
-  }
+  const answer = await site.request('GET', '/api/articles?' + params);
 
+  // The filters changed while this was on its way; a newer request owns the list.
   if (mine !== generation) return;
 
   loading.hidden = true;
   busy = false;
 
-  if (!response || !response.ok) {
+  if (!answer.ok) {
     done = true;
-    say(response ? explain(response.status) : 'אין חיבור לשרת.');
+    say(answer.status ? explain(answer.status) : 'אין חיבור לשרת.');
     return;
   }
 
-  const page = await response.json();
-  if (mine !== generation) return;
+  for (const article of answer.body.articles) rows.append(render(article));
 
-  for (const article of page.articles) rows.append(render(article));
-
-  cursor = page.nextCursor;
+  cursor = answer.body.nextCursor;
   done = !cursor;
   empty.hidden = rows.children.length > 0;
 

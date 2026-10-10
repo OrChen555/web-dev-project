@@ -30,7 +30,7 @@
     <select id="category" name="category">
       <option value="">כל הקטגוריות</option>
       <% for (const value of categories) { %>
-        <option value="<%= value %>"><%= names[value] || value %></option>
+        <option value="<%= value %>"><%= categoryNames[value] || value %></option>
       <% } %>
     </select>
   </div>

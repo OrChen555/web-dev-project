@@ -27,7 +27,8 @@
     document.documentElement.classList.add('js');
   </script>
 </head>
-<body>
+<%# The category names from app.js, so page scripts use the same list (site.categories). %>
+<body data-categories="<%= JSON.stringify(categoryNames) %>">
   <header class="masthead">
     <!-- The wordmark is a background image rather than an <img> so that only the
          variant actually in use is downloaded. Two <img> tags would fetch both,

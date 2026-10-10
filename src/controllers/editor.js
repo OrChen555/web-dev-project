@@ -3,32 +3,19 @@ const Article = require('../models/article');
 const { apply } = require('../services/articleState');
 const newsroom = require('../services/newsroom');
 const analytics = require('../services/analytics');
+const { pick } = require('../services/listing');
 const logger = require('../logger');
 
 const MAX_NOTE = 1000;
 
-// What the pages print. Hebrew lives in the views, the enum stays English.
-const CATEGORY_NAMES = {
-  news: 'חדשות',
-  politics: 'פוליטיקה',
-  economy: 'כלכלה',
-  sports: 'ספורט',
-  culture: 'תרבות',
-  technology: 'טכנולוגיה',
-  health: 'בריאות'
-};
-
-// The server formats in Israel's time zone whatever the machine it runs on is
-// set to, so the page says the same thing on the lecturer's laptop as on ours.
+// Formats a date for the review page, in Israel time. Used in review.ejs.
 const when = (date) => (date
   ? new Date(date).toLocaleString('he-IL', {
     timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   })
   : '');
 
-// One row of the editor's list. The title is the working copy's where there is
-// one, because that is what is waiting on the editor; isLive and hasUpdate say
-// whether readers are meanwhile seeing something else.
+// Turns an article document into the JSON one row of the editor's list needs.
 const asRow = (article) => {
   const copy = article.draft || article.published;
 
@@ -39,8 +26,6 @@ const asRow = (article) => {
     hasUpdate: article.isLive && article.draftStatus === 'pending',
     category: article.category,
     title: copy.title,
-    // What readers see, when a rewrite has changed the headline. Search matches
-    // either, so without it a row could match on a title it does not show.
     liveTitle: article.draft && article.published && article.published.title !== article.draft.title
       ? article.published.title
       : null,
@@ -55,22 +40,14 @@ const asRow = (article) => {
   };
 };
 
+// GET /api/articles?all=true. The editor's list, as JSON (called by editor-list.js).
 async function list(req, res) {
-  const { articles, nextCursor } = await newsroom.list({
-    status: req.query.status ? String(req.query.status) : '',
-    category: req.query.category ? String(req.query.category) : '',
-    q: req.query.q ? String(req.query.q) : '',
-    sort: req.query.sort ? String(req.query.sort) : '',
-    after: req.query.after ? String(req.query.after) : '',
-    limit: req.query.limit
-  });
+  const { articles, nextCursor } = await newsroom.list(req.query);
 
   res.json({ articles: articles.map(asRow), nextCursor });
 }
 
-// Both go through the state machine, which is what refuses an approval of
-// something that is not pending, or a return without a note. Nothing here sets
-// draftStatus itself.
+// POST /api/articles/:id/approve. Publishes the working copy (the "approve" button).
 async function approve(req, res) {
   const article = req.target;
   const wasLive = article.isLive;
@@ -87,6 +64,7 @@ async function approve(req, res) {
   res.json(asRow(await article.populate('reporter', 'name')));
 }
 
+// POST /api/articles/:id/return. Sends it back to the reporter with a note.
 async function sendBack(req, res) {
   const article = req.target;
 
@@ -105,6 +83,7 @@ async function sendBack(req, res) {
   res.json(asRow(await article.populate('reporter', 'name')));
 }
 
+// DELETE /api/articles/:id. Deletes the article with its comments and views.
 async function remove(req, res) {
   const article = req.target;
   const title = (article.published || article.draft || {}).title;
@@ -116,14 +95,12 @@ async function remove(req, res) {
   res.status(204).end();
 }
 
+// GET /api/articles/:id/views?range=7d. The chart data (called by editor-analytics.js).
 async function views(req, res) {
   const article = req.target;
   await article.populate('publishHistory.by', 'name');
 
-  const range = String(req.query.range || 'all');
-  if (!analytics.RANGES.includes(range)) {
-    throw new HttpError(400, `Range must be one of: ${analytics.RANGES.join(', ')}`);
-  }
+  const range = pick(req.query.range, analytics.RANGES, 'range') || 'all';
 
   const copy = article.published || article.draft;
 
@@ -139,26 +116,20 @@ async function views(req, res) {
   });
 }
 
-// The pages. The queue and the chart fill themselves from the endpoints above;
-// the review page is rendered whole, so the editor reads both versions in the
-// HTML itself and the script only adds the highlighting and the buttons.
-
+// GET /editor/articles. Renders the list page; editor-list.js then fills it.
 function queuePage(req, res) {
   res.render('editor/list', {
     title: 'אזור העורך',
     script: '/js/editor-list.js',
-    filters: newsroom.FILTERS,
     categories: Article.CATEGORIES,
-    names: CATEGORY_NAMES,
-    // The queue opens on what is waiting, because that is what the editor is
-    // here for. "all" is spelled out so the choice survives in the address bar.
     status: [...newsroom.FILTERS, 'all'].includes(req.query.status) ? req.query.status : 'pending'
   });
 }
 
-// The two copies split into paragraphs here, so the template only loops.
+// Splits a body into paragraphs for review.ejs.
 const paragraphs = (copy) => (copy ? copy.body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean) : []);
 
+// GET /editor/articles/:id. Renders the review page with both versions in the HTML.
 async function reviewPage(req, res) {
   const article = await Article.findById(req.params.id)
     .populate('reporter', 'name')
@@ -166,21 +137,19 @@ async function reviewPage(req, res) {
     .populate('publishHistory.by', 'name');
   if (!article) throw new HttpError(404, 'No such article');
 
-  // Only ever one of these, and only after this page did it: the result of the
-  // action that reloaded it.
   const done = ['approved', 'returned'].includes(req.query.done) ? req.query.done : null;
 
   res.render('editor/review', {
     title: 'סקירת כתבה',
     script: '/js/editor-review.js',
     article,
-    names: CATEGORY_NAMES,
     when,
     paragraphs,
     done
   });
 }
 
+// GET /editor/analytics. Renders the chart page; editor-analytics.js then fills it.
 function analyticsPage(req, res) {
   res.render('editor/analytics', {
     title: 'סטטיסטיקות',

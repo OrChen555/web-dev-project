@@ -211,7 +211,8 @@ One module owns these transitions. Nothing else writes `draftStatus`.
 | `pending` | `published` | editor | clears `draft`, appends to `publishHistory` |
 | `pending` | `returned` | editor | **a note is required** |
 | `returned` | `pending` | reporter, own article only | |
-| published, no draft | `draft` | reporter (own) or editor | copies `published` into `draft` |
+| published, no draft | `draft` | reporter, own article only | copies `published` into `draft` |
+| published, no draft | `pending` | editor | the same copy, sent straight for approval: the editor is the approver |
 
 **Anything else is refused, on the server.** A reporter cannot publish their own
 article. A returned article cannot jump to published. Hiding the button is not

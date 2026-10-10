@@ -810,11 +810,13 @@ code {
 .history ol { margin: 0; padding-inline-start: var(--space-5); }
 .history li { margin-block-end: var(--space-1); }
 
-/* The analytics screen. */
+/* The analytics screen. A grid of cards that fills the page, as many to a row
+   as fit, each one a button that opens its chart. */
 
 .choices {
   display: grid;
-  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-4);
   margin: 0 0 var(--space-4);
   padding: 0;
   list-style: none;
@@ -822,25 +824,38 @@ code {
 
 button.choice {
   display: grid;
+  align-content: start;
   justify-items: start;
-  gap: var(--space-1);
+  gap: var(--space-2);
   width: 100%;
-  padding: var(--space-3);
+  height: 100%;
+  padding: 0 0 var(--space-4);
+  overflow: hidden;
   background: var(--surface-raised);
   border-color: var(--rule);
+  border-radius: var(--radius);
   color: var(--ink);
   font-weight: 400;
   text-align: start;
 }
 
-button.choice:hover { background: var(--surface-sunk); border-color: var(--rule-strong); }
-
-button.choice[aria-pressed='true'] {
-  background: var(--accent-soft);
+button.choice:hover {
+  background: var(--surface-raised);
   border-color: var(--accent);
+  box-shadow: var(--shadow-lifted);
 }
 
-.choice-title { font-weight: 600; }
+.choice-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-sunk) center / cover no-repeat;
+}
+
+.choice-title,
+.choice-meta { padding-inline: var(--space-4); }
+
+.choice-title { font-weight: 600; line-height: var(--leading-tight); }
 .choice-meta { color: var(--ink-soft); font-size: var(--text-xs); }
 
 .segmented {
@@ -870,7 +885,3 @@ button.choice[aria-pressed='true'] {
 @media (max-width: 40rem) {
   .chart-box { height: 16rem; }
 }
-
-/* Where the chart lands when picking an article scrolls it into view: a little
-   below the top edge rather than flush against it. */
-.chart-panel { scroll-margin-block-start: var(--space-4); }

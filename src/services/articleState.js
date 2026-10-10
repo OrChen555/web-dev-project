@@ -75,19 +75,24 @@ const ACTIONS = {
   // Editing something that is already out. The published copy is left exactly
   // where it is and a working copy is made from it, which is what lets readers
   // carry on seeing the approved version throughout.
+  //
+  // A reporter's copy starts as a draft, to be sent when it is ready. An
+  // editor's goes straight to pending: the editor is the one who approves, and
+  // a draft would sit waiting for a reporter to send in work they never wrote.
+  // It still reaches readers only through approve, like every other update.
   revise: {
     past: 'revised',
     from: ['published'],
     allowed: (article, actor) => owns(article, actor) || isEditor(actor),
     refusal: 'Only the reporter who owns this article, or an editor, can revise it',
-    apply(article) {
+    apply(article, actor) {
       article.draft = {
         title: article.published.title,
         summary: article.published.summary,
         body: article.published.body,
         image: article.published.image
       };
-      article.draftStatus = 'draft';
+      article.draftStatus = isEditor(actor) ? 'pending' : 'draft';
     }
   }
 };

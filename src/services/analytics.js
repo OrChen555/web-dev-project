@@ -32,8 +32,8 @@ function stepFor(span) {
   return minutes * MINUTE;
 }
 
-async function series(article, range = 'all', now = new Date()) {
-  if (!(range in RANGES)) range = 'all';
+async function series(article, range) {
+  const now = new Date();
 
   // The end is the close of the current bucket, so the views counted in the last
   // few minutes are on the chart rather than waiting for the window to finish.

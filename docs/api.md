@@ -166,7 +166,9 @@ POST   /api/articles/:id/return    editor, { note } required
 **`revise`** is how an article that is already out gets rewritten. It copies the
 published copy into the working one and answers 200 with it, ready to be edited.
 `published` is left alone, so readers carry on seeing the approved version while
-the rewrite is written and after it is sent — until an editor approves it.
+the rewrite is written and after it is sent — until an editor approves it. A
+reporter's rewrite starts as `draft`; an editor's goes straight to `pending`,
+since the editor is the one who approves it.
 
 **`PATCH`** is the autosave. Every field is optional and only the ones sent are
 written, so a request carries whatever has changed:

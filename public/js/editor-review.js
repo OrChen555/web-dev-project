@@ -18,6 +18,7 @@ const noteGo = document.getElementById('note-go');
 const noteNo = document.getElementById('note-no');
 const noteProblem = document.getElementById('note-problem');
 const compare = document.getElementById('compare');
+const single = document.querySelector('.single');
 const marks = document.getElementById('marks');
 const changed = document.getElementById('changed');
 
@@ -40,20 +41,6 @@ const say = (text) => {
   problem.hidden = false;
 };
 
-// One request, and an answer the caller can read the same way whether the
-// server refused or the network did.
-async function send(method, url, body) {
-  try {
-    return await fetch(url, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined
-    });
-  } catch {
-    return { ok: false, status: 0 };
-  }
-}
-
 const reloadWith = (done) => {
   location.href = location.pathname + (done ? '?done=' + done : '');
 };
@@ -74,7 +61,7 @@ if (approve) {
     approve.disabled = true;
     problem.hidden = true;
 
-    const response = await send('POST', '/api/articles/' + id + '/approve');
+    const response = await site.request('POST', '/api/articles/' + id + '/approve');
     if (response.ok) return reloadWith('approved');
 
     approve.disabled = false;
@@ -104,7 +91,7 @@ if (sendBack) {
     }
 
     noteGo.disabled = true;
-    const response = await send('POST', '/api/articles/' + id + '/return', { note: note.value.trim() });
+    const response = await site.request('POST', '/api/articles/' + id + '/return', { note: note.value.trim() });
     if (response.ok) return reloadWith('returned');
 
     // Left open, so the note that was typed is not lost.
@@ -126,7 +113,7 @@ remove.addEventListener('click', async () => {
   remove.disabled = true;
   problem.hidden = true;
 
-  const response = await send('DELETE', '/api/articles/' + id);
+  const response = await site.request('DELETE', '/api/articles/' + id);
   if (response.ok) {
     location.href = '/editor/articles';
     return;
@@ -163,6 +150,21 @@ function changes() {
   return body;
 }
 
+// An article that is out with no working copy has nothing to write to yet. The
+// first save makes one with revise, which for an editor goes straight to
+// pending, and every save after that writes into it. Only once: a second
+// revise is refused, because the article is no longer just "published".
+let needsRevise = review.dataset.needsRevise === 'true';
+
+async function write(body) {
+  if (needsRevise) {
+    const opened = await site.request('POST', '/api/articles/' + id + '/revise');
+    if (!opened.ok) return opened;
+    needsRevise = false;
+  }
+  return site.request('PATCH', '/api/articles/' + id, body);
+}
+
 // Returns the save in flight, so that finishing can wait for it rather than
 // reloading over a request that has not landed.
 function save() {
@@ -174,7 +176,7 @@ function save() {
   saved.textContent = 'שומר…';
   problem.hidden = true;
 
-  saving = send('PATCH', '/api/articles/' + id, body).then(async (response) => {
+  saving = write(body).then((response) => {
     saving = null;
 
     if (!response.ok) {
@@ -184,7 +186,7 @@ function save() {
     }
 
     // Read back what was stored: a field left empty keeps its previous value.
-    const article = await response.json();
+    const article = response.body;
     for (const name of fields) {
       stored[name] = article[name] || '';
       if (document.activeElement !== input[name]) input[name].value = stored[name];
@@ -204,6 +206,7 @@ if (edit) {
     form.hidden = false;
     actions.hidden = true;
     if (compare) compare.hidden = true;
+    if (single) single.hidden = true;
     input.title.focus();
   });
 
