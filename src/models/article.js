@@ -74,7 +74,12 @@ articleSchema.index({ category: 1, publishedAt: -1, _id: -1 });
 articleSchema.index({ category: 1, viewCount: -1, _id: -1 });
 
 articleSchema.index({ reporter: 1 });
-articleSchema.index({ draftStatus: 1 });
+// The editor's list: every article, newest change first, optionally narrowed to
+// one state. With _id last for the same cursor reason as the feed keys. It also
+// serves a bare draftStatus filter as its prefix, so that one has no index of
+// its own any more.
+articleSchema.index({ draftStatus: 1, updatedAt: -1, _id: -1 });
+articleSchema.index({ updatedAt: -1, _id: -1 });
 
 // No text index on the title. Search matches part of a word, which a text index
 // cannot do, so it is a regular expression; see services/feed.js.

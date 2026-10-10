@@ -1,0 +1,90 @@
+<%- include('../partials/top') %>
+
+<div class="row between">
+  <h1>אזור העורך</h1>
+  <a class="button secondary" href="/editor/analytics">סטטיסטיקות צפייה</a>
+</div>
+<p class="lede">כל הכתבות במערכת, של כל הכתבים. כתבה שממתינה לאישור נפתחת לסקירה, עריכה, אישור או החזרה לתיקונים.</p>
+
+<% const LABELS = {
+  all: 'הכל',
+  pending: 'ממתינות לאישור',
+  update: 'עדכונים לכתבות שפורסמו',
+  draft: 'בהכנה',
+  returned: 'הוחזרו לתיקונים',
+  published: 'פורסמו'
+}; %>
+
+<form class="toolbar" id="filters" role="search">
+  <div class="field">
+    <label for="status">מצב</label>
+    <select id="status" name="status">
+      <% for (const value of ['all', 'pending', 'update', 'draft', 'returned', 'published']) { %>
+        <option value="<%= value %>" <%= value === status ? 'selected' : '' %>><%= LABELS[value] %></option>
+      <% } %>
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="category">קטגוריה</label>
+    <select id="category" name="category">
+      <option value="">כל הקטגוריות</option>
+      <% for (const value of categories) { %>
+        <option value="<%= value %>"><%= categoryNames[value] || value %></option>
+      <% } %>
+    </select>
+  </div>
+
+  <div class="field grow">
+    <label for="q">חיפוש לפי כותרת</label>
+    <input id="q" name="q" type="search" autocomplete="off" maxlength="100">
+  </div>
+
+  <div class="field">
+    <label for="sort">מיון</label>
+    <select id="sort" name="sort">
+      <option value="updated">שינוי אחרון</option>
+      <option value="popular">הכי נצפות</option>
+    </select>
+  </div>
+</form>
+
+<p class="problem" id="problem" role="status" hidden></p>
+
+<div class="scrolls">
+  <table class="rows queue">
+    <thead>
+      <tr>
+        <th>כותרת</th>
+        <th>כתב</th>
+        <th>קטגוריה</th>
+        <th>מצב</th>
+        <th>שינוי אחרון</th>
+        <th>צפיות</th>
+        <!-- A label rather than an .sr-only span: that one is absolutely
+             positioned, escapes the scrolling box and widened the whole page
+             on a phone. -->
+        <th aria-label="פעולות"></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<!-- In the markup rather than built in JS, so the screen has something before
+     the first response arrives. -->
+<div id="loading" aria-hidden="true">
+  <div class="skeleton line"></div>
+  <div class="skeleton line"></div>
+  <div class="skeleton line short"></div>
+</div>
+
+<div class="empty" id="empty" hidden>
+  <h2>אין כתבות שמתאימות לסינון</h2>
+  <p>נסו מצב אחר, קטגוריה אחרת או חיפוש אחר.</p>
+</div>
+
+<!-- What the observer watches: reaching it fetches the next page. -->
+<div id="sentinel" aria-hidden="true"></div>
+
+<%- include('../partials/bottom') %>

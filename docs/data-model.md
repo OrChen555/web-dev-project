@@ -211,7 +211,8 @@ One module owns these transitions. Nothing else writes `draftStatus`.
 | `pending` | `published` | editor | clears `draft`, appends to `publishHistory` |
 | `pending` | `returned` | editor | **a note is required** |
 | `returned` | `pending` | reporter, own article only | |
-| published, no draft | `draft` | reporter (own) or editor | copies `published` into `draft` |
+| published, no draft | `draft` | reporter, own article only | copies `published` into `draft` |
+| published, no draft | `pending` | editor | the same copy, sent straight for approval: the editor is the approver |
 
 **Anything else is refused, on the server.** A reporter cannot publish their own
 article. A returned article cannot jump to published. Hiding the button is not
@@ -241,7 +242,8 @@ thousands of articles.
 | `articles` | `category`, `publishedAt` desc, `_id` | one category, newest first |
 | `articles` | `category`, `viewCount` desc, `_id` | one category, by popularity |
 | `articles` | `reporter` | a reporter's own list |
-| `articles` | `draftStatus` | the editor's queue |
+| `articles` | `draftStatus`, `updatedAt` desc, `_id` | the editor's list by state, newest change first |
+| `articles` | `updatedAt` desc, `_id` | the editor's list with no state filter |
 | `comments` | `article`, `createdAt` | a page of comments |
 | `comments` | `visitorId`, `createdAt` | the three per minute limit |
 | `viewbuckets` | `article`, `bucket` unique | the upsert and the chart |
@@ -303,9 +305,10 @@ viewCount, commentCount, seen`. No `body`. `seen` is worked out per request from
 opened whether or not the feed is filtered by it. The full shape is in
 [api.md](./api.md), under the feed.
 
-**3. What does the analytics query return?** Owner: **person 5**. Buckets as
-they are, or summed into larger windows for longer ranges? Does the chart ask
-for a date range, or always the whole life of the article?
+**3. What does the analytics query return?** Owner: **person 5**. **Answered:**
+the chart asks for a range (`24h`, `7d`, `30d` or the whole life of the
+article), and the buckets are summed on the server into windows wide enough
+to keep the answer at 400 points or fewer. See the views section of `api.md`.
 
 **4. Is the comment author free text or does it need anything else?**
 Owner: **person 3**.

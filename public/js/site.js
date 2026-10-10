@@ -3,6 +3,24 @@
 // two `const form` in two classic scripts is a syntax error that takes the
 // whole page down.
 const site = (() => {
+  const categories = JSON.parse(document.body.dataset.categories);
+
+  // Calls the API and answers { ok, status, body }. status 0 means no connection.
+  async function request(method, url, data) {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      // 204 (after a delete) has no body to read.
+      const body = response.status === 204 ? null : await response.json();
+      return { ok: response.ok, status: response.status, body };
+    } catch {
+      return { ok: false, status: 0, body: null };
+    }
+  }
+
   const dialog = document.getElementById('ask');
   const title = document.getElementById('ask-title');
   const body = document.getElementById('ask-body');
@@ -85,5 +103,5 @@ const site = (() => {
     });
   }
 
-  return { confirm };
+  return { confirm, request, categories };
 })();

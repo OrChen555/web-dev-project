@@ -1,0 +1,183 @@
+<%- include('../partials/top') %>
+
+<%
+  const STATES = { draft: 'בהכנה', pending: 'ממתינה לאישור', returned: 'הוחזרה לתיקונים', published: 'פורסמה' };
+  const state = article.state;
+  const live = article.published;
+  const work = article.draft;
+  const hasUpdate = Boolean(live && work);
+  const copy = work || live;
+  const id = String(article._id);
+%>
+
+<p class="crumb"><a href="/editor/articles">&rarr; חזרה לאזור העורך</a></p>
+
+<!-- What editor-review.js needs to know: which article this is, and whether it
+     is out with no working copy yet (then the first save has to make one). -->
+<article class="panel" id="review" data-id="<%= id %>" data-needs-revise="<%= work ? 'false' : 'true' %>">
+  <header class="editor-head">
+    <div>
+      <h1><%= copy.title %></h1>
+      <p class="byline">
+        <% if (live && state !== 'published') { %><span class="status published">באוויר</span><% } %>
+        <span class="status <%= state %>"><%= hasUpdate && state === 'pending' ? 'עדכון ממתין לאישור' : STATES[state] %></span>
+        <span class="sep">&middot;</span>
+        <span class="who"><%= article.reporter ? article.reporter.name : 'כתב שנמחק' %></span>
+        <span class="sep">&middot;</span>
+        <span><%= categoryNames[article.category] || article.category %></span>
+        <span class="sep">&middot;</span>
+        <span>שינוי אחרון: <time datetime="<%= article.updatedAt.toISOString() %>"><%= when(article.updatedAt) %></time></span>
+        <% if (live) { %>
+          <span class="sep">&middot;</span>
+          <span><%= article.viewCount.toLocaleString('he-IL') %> צפיות</span>
+          <span class="sep">&middot;</span>
+          <span><%= article.commentCount.toLocaleString('he-IL') %> תגובות</span>
+        <% } %>
+      </p>
+    </div>
+  </header>
+
+  <% if (done === 'approved') { %>
+    <p class="notice good" role="status">הכתבה אושרה ופורסמה. זו הגרסה שהקוראים רואים עכשיו.</p>
+  <% } else if (done === 'returned') { %>
+    <p class="notice good" role="status">הכתבה הוחזרה לכתב יחד עם ההערה.</p>
+  <% } %>
+
+  <% if (hasUpdate && state === 'pending') { %>
+    <div class="notice warn">
+      <p><strong>זהו עדכון לכתבה שכבר פורסמה.</strong> הקוראים ממשיכים לראות את הגרסה המפורסמת עד שתאשרו את העדכון. ההבדלים מסומנים בשתי העמודות.</p>
+    </div>
+  <% } else if (state === 'draft') { %>
+    <div class="notice">
+      <p>הכתבה עדיין בהכנה אצל הכתב ולא הוגשה לאישור. אפשר לאשר או להחזיר רק כתבה שהוגשה.</p>
+    </div>
+  <% } %>
+
+  <% if (article.editorNote) { %>
+    <div class="notice bad">
+      <p><strong>הוחזרה לתיקונים<%= article.editorNote.by ? ' על ידי ' + article.editorNote.by.name : '' %>, <%= when(article.editorNote.at) %>:</strong></p>
+      <p><%= article.editorNote.text %></p>
+    </div>
+  <% } %>
+
+  <p class="problem" id="problem" role="status" hidden></p>
+
+  <div class="actions" id="actions">
+    <% if (state === 'pending') { %>
+      <button type="button" id="approve"><%= hasUpdate ? 'אישור ופרסום העדכון' : 'אישור ופרסום' %></button>
+      <button type="button" class="secondary" id="return">החזרה לתיקונים</button>
+    <% } %>
+    <button type="button" class="secondary" id="edit">עריכה</button>
+    <% if (live) { %>
+      <a class="button secondary" href="/editor/analytics?article=<%= id %>">גרף צפיות</a>
+      <a class="button secondary" href="/articles/<%= id %>">צפייה באתר</a>
+    <% } %>
+    <button type="button" class="danger" id="delete">מחיקה</button>
+  </div>
+
+  <!-- The editor's own changes go into the working copy, through the same
+       autosave the reporter uses. It never touches what readers see. -->
+  <form class="edit-copy" id="form" novalidate hidden>
+    <h2><%= work ? (hasUpdate ? 'עריכת הגרסה החדשה' : 'עריכת הכתבה') : 'עריכת כתבה שפורסמה' %></h2>
+    <p class="muted">
+      <% if (live && !work) { %>
+        השינויים יישמרו אוטומטית כעדכון שממתין לאישור. הקוראים ממשיכים לראות את הגרסה המפורסמת עד שתאשרו את העדכון.
+      <% } else { %>
+        השינויים נשמרים אוטומטית לגרסה שבעבודה.<%= live ? ' הגרסה המפורסמת לא משתנה עד לאישור.' : '' %>
+      <% } %>
+      <span class="saved" id="saved" role="status"></span>
+    </p>
+
+    <div class="field">
+      <label for="title">כותרת</label>
+      <input id="title" name="title" autocomplete="off" value="<%= copy.title %>">
+    </div>
+
+    <div class="field">
+      <label for="summary">תקציר</label>
+      <textarea id="summary" name="summary" rows="2"><%= copy.summary %></textarea>
+    </div>
+
+    <div class="field">
+      <label for="body">גוף הכתבה</label>
+      <textarea id="body" name="body" rows="14"><%= copy.body %></textarea>
+    </div>
+
+    <div class="field">
+      <label for="image">תמונה</label>
+      <input id="image" name="image" type="url" autocomplete="off" placeholder="https://" value="<%= copy.image || '' %>">
+      <span class="hint">כתובת של תמונה באינטרנט. השאירו ריק כדי להסיר אותה.</span>
+    </div>
+
+    <div class="actions">
+      <button type="submit" id="finish">סיום עריכה</button>
+    </div>
+  </form>
+
+  <% if (hasUpdate) { %>
+    <div class="row between compare-head">
+      <h2>השוואת גרסאות</h2>
+      <label class="check">
+        <input type="checkbox" id="marks" checked>
+        סימון ההבדלים
+      </label>
+    </div>
+    <p class="muted" id="changed" role="status"></p>
+
+    <div class="compare marking" id="compare">
+      <% for (const [label, version, kind] of [['הגרסה המפורסמת כעת — מה שהקוראים רואים', live, 'old'], [state === 'pending' ? 'הגרסה החדשה — ממתינה לאישור' : 'הגרסה שבעבודה', work, 'new']]) { %>
+        <section class="version <%= kind %>" data-version="<%= kind %>" aria-label="<%= label %>">
+          <h3 class="version-label"><%= label %></h3>
+          <% if (version.image) { %><img class="version-image" src="<%= version.image %>" alt="" loading="lazy"><% } %>
+          <p class="version-image-url muted" data-field="image" data-value="<%= version.image || '' %>">תמונה: <%= version.image || 'ללא' %></p>
+          <h2 data-field="title"><%= version.title %></h2>
+          <p class="version-summary" data-field="summary"><%= version.summary %></p>
+          <div class="article-body" data-field="body"><% for (const p of paragraphs(version)) { %><p><%= p %></p><% } %></div>
+        </section>
+      <% } %>
+    </div>
+  <% } else { %>
+    <section class="single">
+      <h3 class="version-label"><%= live ? 'הגרסה המפורסמת' : (state === 'pending' ? 'התוכן שהוגש' : 'התוכן שבעבודה') %></h3>
+      <% if (copy.image) { %><img class="version-image" src="<%= copy.image %>" alt="" loading="lazy"><% } %>
+      <p class="version-summary"><%= copy.summary %></p>
+      <div class="article-body"><% for (const p of paragraphs(copy)) { %><p><%= p %></p><% } %></div>
+    </section>
+  <% } %>
+
+  <% if (article.publishHistory.length) { %>
+    <section class="history">
+      <h2>היסטוריית פרסום</h2>
+      <ol>
+        <% article.publishHistory.forEach((entry, i) => { %>
+          <li>
+            <time datetime="<%= entry.at.toISOString() %>"><%= when(entry.at) %></time>
+            &middot; <%= i === 0 ? 'פרסום ראשון' : 'עדכון ' + i %>
+            <% if (entry.by) { %>&middot; אושר על ידי <%= entry.by.name %><% } %>
+          </li>
+        <% }) %>
+      </ol>
+    </section>
+  <% } %>
+</article>
+
+<!-- Its own dialog rather than site.confirm, which is text only. The note is
+     required: the reporter has to be able to see what was asked for. -->
+<dialog id="send-back" aria-labelledby="send-back-title">
+  <h2 id="send-back-title">החזרה לתיקונים</h2>
+  <p>הכתב יראה את ההערה ליד הכתבה ויוכל לתקן ולהגיש מחדש.</p>
+
+  <div class="field">
+    <label for="note">אילו תיקונים נדרשים?</label>
+    <textarea id="note" rows="5" maxlength="1000" required></textarea>
+  </div>
+
+  <p class="problem" id="note-problem" role="status" hidden></p>
+
+  <div class="actions">
+    <button type="button" id="note-go">החזרה לכתב</button>
+    <button type="button" class="secondary" id="note-no">ביטול</button>
+  </div>
+</dialog>
+
+<%- include('../partials/bottom') %>
