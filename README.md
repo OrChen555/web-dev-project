@@ -54,6 +54,8 @@ inside whichever request first needed the value.
 | `npm run dev` | The server, restarting on every file change |
 | `npm run seed` | **Wipes the database** and fills it with development data |
 | `npm run seed -- --bulk=3000` | The same, plus filler articles for measuring indexes |
+| `npm run seed:demo` | **Wipes the database** and fills it with feed demo data instead. `-- --count=3000` for more |
+| `npm run seen -- <visitor cookie> [count]` | Marks articles as seen for one browser. `--clear` instead of a count undoes it |
 | `npm run db:up` / `db:down` | MongoDB in Docker. The data survives `down`, in a named volume |
 | `npm run db:ui` / `db:ui:down` | A browser view of the data at <http://localhost:8081> |
 
@@ -77,6 +79,23 @@ random ones, because random copy never produces that case.
 Two reporters rather than one, because checking that a reporter cannot touch
 someone else's article needs someone else.
 
+### The feed demo
+
+`npm run seed:demo` is for testing the home feed before the reporter and editor
+areas can produce real articles. It **also empties every collection**, and
+refuses to run against a database that is not local.
+
+It creates six accounts (`admin` and `michal` as editors; `dana`, `yonatan`,
+`noa` and `amir` as reporters, all with `password`) and 635 published articles:
+600 ordinary ones over the last four months, and 35 placed on purpose, each to
+prove one rule. A pending update readers must not see, an XSS title, a broken
+image, a reporter whose account is gone, 25 articles in the same millisecond
+across a page break. A fixed random seed writes the same data every run, so
+[docs/qa-feed.md](./docs/qa-feed.md) can name what should appear where.
+
+Until the article page exists, `npm run seen` is the quick way to see the
+seen / not seen filter do anything. Take the `visitor` cookie from DevTools.
+
 ---
 
 ## Project structure
@@ -89,7 +108,7 @@ someone else's article needs someone else.
     src/services/       Domain rules. No req, no res
     src/middlewares/    Anything between the request and a handler
     public/             Served as-is: stylesheets, browser scripts, images
-    scripts/            Run by hand. The seed
+    scripts/            Run by hand. The seed, the feed demo, marking seen
     docs/               What was decided, and why
 
 `src/config.js`, `db.js`, `errors.js`, `logger.js`, `session.js` and
@@ -99,7 +118,8 @@ than any one of M, V or C.
 The details are in [CONTRIBUTING.md](./CONTRIBUTING.md), and the design behind
 the data and the API is in [docs/data-model.md](./docs/data-model.md) and
 [docs/api.md](./docs/api.md). What every feed query costs, and why the indexes
-are what they are, is in [docs/indexes.md](./docs/indexes.md).
+are what they are, is in [docs/indexes.md](./docs/indexes.md), and the manual
+checklist for the feed and the weather is [docs/qa-feed.md](./docs/qa-feed.md).
 
 ## The style guide
 
@@ -141,8 +161,15 @@ guide above.
 
 **Articles** — the state machine that owns every transition between the four
 article states, and the feed API: search, a category filter, a seen / not seen
-filter per device, sorting by date or popularity, and cursor paging. A category
-or sort it does not know is refused with a 400 rather than guessed at.
+filter per device, sorting by date or popularity, and cursor paging. Search
+matches part of a word, so `גשר` finds `הגשר`. A category or sort it does not
+know is refused with a 400 rather than guessed at. "Seen" covers the 1,000
+articles a device opened most recently, for 90 days.
+
+**Views** — `POST /api/articles/:id/views` counts a view, adds it to the fifteen
+minute window the analytics chart reads, and marks the article seen for that
+device, all in one service. For now the feed card sends it; the article page
+takes it over.
 
 **The feed** — the home page. Cards drawn from the API; search as you type; the
 category, seen and sort filters kept in the address, so a shared link or a
@@ -151,9 +178,11 @@ for anyone on a keyboard and a retry when a page fails. Loading, empty, error
 and end-of-feed states, in light and dark, down to a phone.
 
 **Weather** — a sidebar widget for five cities, the choice remembered per
-browser. It reads Open-Meteo through our own endpoint, which keeps each city for
-ten minutes, sends one request however many readers ask at once, and when the
-provider is down serves the last reading, marked as possibly out of date.
+browser. It reads Open-Meteo through our own endpoint. The server fetches all
+five cities in the background every ten minutes and answers readers from memory,
+so nobody waits on the provider and it sees six requests an hour. When the
+provider is down, readers get the last reading, marked as possibly out of date
+after fifteen minutes.
 
 ### Still to come
 
