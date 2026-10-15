@@ -8,6 +8,7 @@ const Article = require('../models/article');
 // (services/feed.js) and the editor's list (services/newsroom.js) both build on
 // these, so a fix made here reaches both.
 
+// The most rows one page can ask for.
 const MAX_LIMIT = 50;
 
 // Longer than any headline anyone would search for. The cap keeps a stranger
@@ -17,6 +18,7 @@ const MAX_QUERY = 100;
 // Which sort fields hold a Date, so that decode knows what encode will have stored.
 const DATE_SORTS = ['publishedAt', 'updatedAt'];
 
+// A cursor is [sort value, id] as JSON, made URL-safe with base64url.
 const encode = (value, id) => Buffer.from(JSON.stringify([value, id])).toString('base64url');
 
 // A cursor comes back from us, but it arrives in a query string like anything
@@ -28,6 +30,7 @@ function decode(cursor, field) {
   let value;
   let id;
 
+  // Undo encode(). Anything that is not our format fails here.
   try {
     [value, id] = JSON.parse(Buffer.from(cursor, 'base64url').toString());
   } catch (err) {
@@ -47,6 +50,7 @@ function decode(cursor, field) {
     return { value: at, id };
   }
 
+  // Otherwise the sort is a number (viewCount).
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new HttpError(400, 'That is not a usable cursor');
   }
@@ -93,9 +97,12 @@ function searchText(value) {
 // the start of one writes the final shape: "פינגווין" is how you type your way
 // to "פינגווינים", whose נ is not a ן. Each of the five matches both of its
 // shapes, typed either way.
+// Only the first five words count, to keep the query small.
 const MAX_WORDS = 5;
+// Puts a backslash before every regex symbol, so it is matched as plain text.
 const escape = (word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SHAPES = { כ: '[כך]', ך: '[כך]', מ: '[מם]', ם: '[מם]', נ: '[נן]', ן: '[נן]', פ: '[פף]', ף: '[פף]', צ: '[צץ]', ץ: '[צץ]' };
+// The final regex for one word: escaped, with both shapes of each final letter.
 const pattern = (word) => escape(word).replace(/[כךמםנןפףצץ]/g, (letter) => SHAPES[letter]);
 
 // One condition per word, meant to go under $and: run() below uses $or for the
@@ -103,6 +110,7 @@ const pattern = (word) => escape(word).replace(/[כךמםנןפףצץ]/g, (lette
 // word may be found in any of them, so the editor's list can search the
 // published title and the working one at once.
 function titleContains(q, fields = ['published.title']) {
+  // Split on spaces; each word becomes one condition that must match.
   return q.split(/\s+/).slice(0, MAX_WORDS).map((word) => {
     const matches = fields.map((field) => ({ [field]: { $regex: pattern(word), $options: 'i' } }));
     return matches.length === 1 ? matches[0] : { $or: matches };
@@ -133,10 +141,12 @@ async function run(where, sort, limit, after) {
 
   // One more than asked for, purely to find out whether there is another page.
   const found = await Article.find(where)
+    // _id breaks ties, so the order never changes between pages.
     .sort({ [sort.field]: sort.order, _id: -1 })
     .limit(limit + 1)
     .populate('reporter', 'name');
 
+  // Drop the extra row; the last kept row is where the next page will start.
   const articles = found.slice(0, limit);
   const last = articles[articles.length - 1];
 

@@ -86,6 +86,7 @@ const ACTIONS = {
     allowed: (article, actor) => owns(article, actor) || isEditor(actor),
     refusal: 'Only the reporter who owns this article, or an editor, can revise it',
     apply(article, actor) {
+      // The working copy starts as an exact copy of what is live.
       article.draft = {
         title: article.published.title,
         summary: article.published.summary,

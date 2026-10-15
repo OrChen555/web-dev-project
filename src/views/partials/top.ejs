@@ -39,10 +39,10 @@
     </a>
 
     <%
-      // aria-current on the link to the page being shown, so the highlight
-      // follows you around and a screen reader says "current page" too. A link
-      // counts for everything under it: a review page is still the editor area.
+      // Masthead nav (every page): marks the link of the page you are on, e.g. "סטטיסטיקות"
+      // on /editor/analytics. A link counts for everything under it: a review page is still "אזור העורך".
       const here = (href) => {
+        // locals.path is set in app.js; '/' only matches the home page itself.
         const at = locals.path || '';
         return (href === '/' ? at === '/' : at.startsWith(href)) ? 'aria-current="page"' : '';
       };
@@ -53,6 +53,7 @@
       <% if (typeof user !== 'undefined' && user) { %>
         <% if (user.isAdmin) { %><a href="/admin/users" <%- here('/admin/users') %>>ניהול משתמשים</a><% } %>
         <% if (user.role === 'reporter') { %><a href="/reporter/articles" <%- here('/reporter/articles') %>>ניהול כתבות</a><% } %>
+        <%# Editor only: "אזור העורך" (/editor/articles) and "סטטיסטיקות" (/editor/analytics). %>
         <% if (user.role === 'editor') { %>
           <a href="/editor/articles" <%- here('/editor/articles') %>>אזור העורך</a>
           <a href="/editor/analytics" <%- here('/editor/analytics') %>>סטטיסטיקות</a>

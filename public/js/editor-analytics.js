@@ -3,14 +3,30 @@
 // runs once, as soon as the browser runs this file. The script tag is defer, so
 // that is after the HTML has been read and every element below already exists.
 (() => {
-const browse = document.getElementById('browse');
+// Analytics (/editor/analytics): the dashboard view, "סטטיסטיקות צפייה" (the whole site).
+const dashboard = document.getElementById('dashboard');
+const overviewProblem = document.getElementById('overview-problem');
+const kpiViews = document.getElementById('kpi-views');
+const kpiViewsNote = document.getElementById('kpi-views-note');
+const kpiViewed = document.getElementById('kpi-viewed');
+const kpiViewedNote = document.getElementById('kpi-viewed-note');
+const kpiPublished = document.getElementById('kpi-published');
+const kpiUpdates = document.getElementById('kpi-updates');
+const siteCanvas = document.getElementById('site-chart');
+const siteCaption = document.getElementById('site-caption');
+const topRows = document.getElementById('top');
+const topEmpty = document.getElementById('top-empty');
+const categoryCanvas = document.getElementById('category-chart');
+
+// Analytics: the "ניתוח כתבה בודדת" search, at the bottom of the dashboard.
 const find = document.getElementById('find');
 const q = document.getElementById('q');
-const choices = document.getElementById('choices');
-const pickerLoading = document.getElementById('picker-loading');
+const resultsBox = document.getElementById('results-box');
+const results = document.getElementById('results');
 const pickerEmpty = document.getElementById('picker-empty');
 const pickerProblem = document.getElementById('picker-problem');
-const sentinel = document.getElementById('sentinel');
+
+// Analytics (/editor/analytics?article=<id>): one article's report.
 const report = document.getElementById('report');
 const back = document.getElementById('back');
 const reportTitle = document.getElementById('report-title');
@@ -22,8 +38,12 @@ const impact = document.getElementById('impact');
 const impactHint = document.getElementById('impact-hint');
 const impactEmpty = document.getElementById('impact-empty');
 const canvas = document.getElementById('chart');
+
+// Analytics: the range buttons "24 שעות" / "7 ימים" / "30 יום" / "מאז ומעולם".
+// Both views have their own set; they share one range between them.
 const ranges = [...document.querySelectorAll('[data-range]')];
 
+// The server answers in English; this is what the editor reads instead.
 const WORDING = {
   400: 'הבקשה אינה תקינה.',
   401: 'פג תוקף החיבור. יש להתחבר מחדש.',
@@ -33,184 +53,87 @@ const WORDING = {
 
 const explain = (code) => WORDING[code] || 'לא הצלחנו לטעון את הנתונים. נסו שוב.';
 
+// Number and date formatting, all in Hebrew.
 const number = (n) => Math.round(n).toLocaleString('he-IL');
 const decimal = (n) => n.toLocaleString('he-IL', { maximumFractionDigits: 1 });
+const percent = (n) => Math.round(n * 100) + '%';
 
 const stamp = (ms, withDay) => new Date(ms).toLocaleString('he-IL', withDay
   ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
   : { hour: '2-digit', minute: '2-digit' });
 
-const day = (iso) => new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' });
+const categoryName = (key) => site.categories[key] || key;
 
-// The grid of articles ---------------------------------------------------------
-
-let cursor = null;
-let done = false;
-let busy = false;
-let loaded = false;
-
-// Every request carries a number, and an answer to anything but the latest is
-// dropped: typing a word sends a search per letter, and an early one arriving
-// last would otherwise paint its cards under the final query.
-let generation = 0;
-
-// One card. A real button, so the keyboard reaches it and Enter opens it.
-// textContent throughout: a title is whatever its author typed.
-function card(article) {
-  const li = document.createElement('li');
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'choice';
-
-  const thumb = document.createElement('span');
-  thumb.className = 'choice-thumb';
-  if (article.image) thumb.style.backgroundImage = 'url("' + encodeURI(article.image) + '")';
-
-  const title = document.createElement('span');
-  title.className = 'choice-title';
-  title.textContent = article.title;
-
-  const meta = document.createElement('span');
-  meta.className = 'choice-meta';
-  meta.textContent = (site.categories[article.category] || article.category)
-    + ' · ' + number(article.viewCount) + ' צפיות'
-    + (article.publishedAt ? ' · ' + day(article.publishedAt) : '');
-
-  button.append(thumb, title, meta);
-  button.addEventListener('click', () => pick(article.id));
-  li.append(button);
-  return li;
-}
-
-async function list() {
-  if (busy || done) return;
-  busy = true;
-  const mine = generation;
-
-  pickerProblem.hidden = true;
-  pickerLoading.hidden = false;
-
-  const params = new URLSearchParams({ all: 'true', status: 'published', sort: 'popular', limit: '24' });
-  if (q.value.trim()) params.set('q', q.value.trim());
-  if (cursor) params.set('after', cursor);
-
-  const answer = await site.request('GET', '/api/articles?' + params);
-  if (mine !== generation) return;
-
-  busy = false;
-  pickerLoading.hidden = true;
-
-  if (!answer.ok) {
-    done = true;
-    pickerProblem.textContent = answer.status ? explain(answer.status) : 'אין חיבור לשרת.';
-    pickerProblem.hidden = false;
-    return;
-  }
-
-  for (const article of answer.body.articles) choices.append(card(article));
-  cursor = answer.body.nextCursor;
-  done = !cursor;
-  loaded = true;
-  pickerEmpty.hidden = choices.children.length > 0;
-
-  // A short page can leave the sentinel on screen, and the observer only fires
-  // on a crossing. Asking again here is what keeps a tall window filling.
-  if (!done && !browse.hidden && sentinel.getBoundingClientRect().top < window.innerHeight) list();
-}
-
-function restart() {
-  generation++;
-  busy = false;
-  done = false;
-  cursor = null;
-  choices.replaceChildren();
-  pickerEmpty.hidden = true;
-  list();
-}
-
-let typing;
-q.addEventListener('input', () => {
-  clearTimeout(typing);
-  typing = setTimeout(restart, 300);
-});
-
-find.addEventListener('submit', (event) => {
-  event.preventDefault();
-  clearTimeout(typing);
-  restart();
-});
-
-// An observer rather than a scroll listener, which would fire on every pixel.
-// While the chart is showing the grid is hidden, and nothing is loaded for it.
-new IntersectionObserver((entries) => {
-  if (!browse.hidden && entries.some((entry) => entry.isIntersecting)) list();
-}, { rootMargin: '400px' }).observe(sentinel);
-
-// The chart -------------------------------------------------------------------
-
-let range = 'all';
-let chart = null;
-let data = null;
-// Counts chart requests. If you click 7d and then 30d quickly, the 7d answer can
-// arrive last; each request remembers its number, and only the newest one draws.
-let drawing = 0;
-
-// Every colour comes from tokens.css, read at the moment of drawing, so the
-// chart follows the light and dark modes like the rest of the page.
-const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
-// The update markers. Chart.js draws the line; this draws one vertical rule per
-// publication over it, at the exact minute it happened rather than snapped to
-// the nearest window, with a label so it does not depend on colour alone.
-const markers = {
-  id: 'publications',
-  afterDatasetsDraw(target) {
-    const { ctx, chartArea: area, scales: { x } } = target;
-    const color = token('--state-pending');
-
-    ctx.save();
-    for (const entry of data.publications) {
-      const at = new Date(entry.at).getTime();
-      if (at < x.min || at > x.max) continue;
-
-      const left = x.getPixelForValue(at);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath();
-      ctx.moveTo(left, area.top);
-      ctx.lineTo(left, area.bottom);
-      ctx.stroke();
-
-      ctx.setLineDash([]);
-      ctx.fillStyle = color;
-      ctx.font = '600 12px Assistant, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(entry.first ? 'פרסום' : 'עדכון', left, area.top - 6);
-    }
-    ctx.restore();
-  }
+// Analytics: shows an error (e.g. "אין חיבור לשרת.") in one of the page's problem boxes.
+const fail = (box, answer) => {
+  box.textContent = answer.status ? explain(answer.status) : 'אין חיבור לשרת.';
+  box.hidden = false;
 };
 
-function draw() {
-  if (chart) chart.destroy();
+// Builds a table cell holding text or elements. textContent, never HTML: titles are user input.
+const cell = (...children) => {
+  const td = document.createElement('td');
+  td.append(...children);
+  return td;
+};
 
-  const span = data.buckets.length ? new Date(data.to) - new Date(data.from) : 0;
+// Analytics: the "כותרת" cell of a picker table, kept wide enough to read.
+const titleCell = (text) => Object.assign(cell(text), { className: 'title' });
+
+// Analytics: the "לניתוח הכתבה" button, used in both tables. Opens that article's report.
+const openButton = (id) => {
+  const button = Object.assign(document.createElement('button'), {
+    type: 'button',
+    className: 'quiet',
+    textContent: 'לניתוח הכתבה'
+  });
+  button.addEventListener('click', () => pick(id));
+  return button;
+};
+
+// Shared state ----------------------------------------------------------------
+
+// The selected time range, shared by the dashboard and the report.
+let range = '7d';
+
+// Every colour comes from tokens.css, read at the moment of drawing, so the
+// charts follow the light and dark modes like the rest of the page.
+const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+// Every chart on the page, by name, so a redraw can destroy the old one first.
+const charts = {};
+
+// The size of one chart window in words: "15 דקות", "שעה", "יום".
+function windowName(minutes) {
+  if (minutes < 60) return minutes + ' דקות';
+  if (minutes === 60) return 'שעה';
+  if (minutes < 1440) return (minutes / 60) + ' שעות';
+  return 'יום';
+}
+
+// One line chart of views over time: "צפיות באתר לאורך זמן" on the dashboard,
+// and the article's chart on its report.
+function lineChart(name, target, series, extra = []) {
+  if (charts[name]) charts[name].destroy();
+
+  // Longer than a day, the axis labels need the date as well as the time.
+  const span = series.buckets.length ? new Date(series.to) - new Date(series.from) : 0;
   const withDay = span > 24 * 60 * 60 * 1000;
   const ink = token('--ink-soft');
   const rule = token('--rule');
-  const accent = token('--accent');
 
-  chart = new Chart(canvas, {
+  charts[name] = new Chart(target, {
     type: 'line',
     data: {
       datasets: [{
         label: 'צפיות',
-        data: data.buckets.map((b) => ({ x: new Date(b.at).getTime(), y: b.count })),
-        borderColor: accent,
+        // One point per window: x is the time in ms, y the views in it.
+        data: series.buckets.map((b) => ({ x: new Date(b.at).getTime(), y: b.count })),
+        borderColor: token('--accent'),
         backgroundColor: token('--accent-soft'),
         fill: true,
         borderWidth: 2,
+        // No dots on the line, only when hovering.
         pointRadius: 0,
         pointHoverRadius: 4,
         tension: 0.25
@@ -220,15 +143,17 @@ function draw() {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
+      // The tooltip follows the mouse along the x axis, no need to hit the line.
       interaction: { mode: 'index', intersect: false },
+      // Room above the chart for the publication labels.
       layout: { padding: { top: 18 } },
       scales: {
         // A linear axis of milliseconds rather than Chart.js's time axis, which
         // needs a date library of its own. The labels are formatted here instead.
         x: {
           type: 'linear',
-          min: new Date(data.from).getTime(),
-          max: new Date(data.to).getTime(),
+          min: new Date(series.from).getTime(),
+          max: new Date(series.to).getTime(),
           ticks: { color: ink, maxTicksLimit: 8, callback: (value) => stamp(value, withDay) },
           grid: { color: rule }
         },
@@ -236,7 +161,7 @@ function draw() {
           beginAtZero: true,
           ticks: { color: ink, precision: 0 },
           grid: { color: rule },
-          title: { display: true, color: ink, text: 'צפיות בכל ' + windowName(data.stepMinutes) }
+          title: { display: true, color: ink, text: 'צפיות בכל ' + windowName(series.stepMinutes) }
         }
       },
       plugins: {
@@ -250,23 +175,222 @@ function draw() {
         }
       }
     },
-    plugins: [markers]
+    // Extra drawing on top, like the publication markers.
+    plugins: extra
   });
 }
 
-function windowName(minutes) {
-  if (minutes < 60) return minutes + ' דקות';
-  if (minutes === 60) return 'שעה';
-  if (minutes < 1440) return (minutes / 60) + ' שעות';
-  return 'יום';
+// The dashboard ---------------------------------------------------------------
+
+// The last dashboard answer from the server, or null when it needs fetching.
+let overview = null;
+// Same idea as `drawing` below: only the newest dashboard request may paint.
+let surveying = 0;
+
+// Analytics: the note under "צפיות בטווח", e.g. "▲ +12% לעומת התקופה הקודמת".
+function trend(now, before) {
+  if (before === null) return 'מאז הצפייה הראשונה באתר';
+  if (!before) return now ? 'לא היו צפיות בתקופה הקודמת' : '';
+  const change = Math.round(((now - before) / before) * 100);
+  const arrow = change > 0 ? '▲ +' : change < 0 ? '▼ ' : '';
+  return arrow + change + '% לעומת התקופה הקודמת';
 }
 
+// Analytics: fills the tiles "צפיות בטווח", "כתבות שנצפו", "כתבות חדשות שפורסמו", "עדכונים שפורסמו".
+function kpis() {
+  kpiViews.textContent = number(overview.total);
+  kpiViewsNote.textContent = trend(overview.total, overview.previousTotal);
+  kpiViewed.textContent = number(overview.viewed);
+  kpiViewedNote.textContent = 'מתוך ' + number(overview.live) + ' שבאוויר';
+  kpiPublished.textContent = number(overview.published);
+  kpiUpdates.textContent = number(overview.updates);
+}
+
+// Analytics: fills the "הנצפות ביותר בטווח" table.
+function topTable() {
+  topRows.replaceChildren();
+  topEmpty.hidden = overview.top.length > 0;
+
+  overview.top.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    tr.append(
+      cell(String(index + 1)),
+      titleCell(row.title),
+      cell(categoryName(row.category)),
+      cell(number(row.views)),
+      cell(percent(row.share)),
+      cell(openButton(row.id))
+    );
+    topRows.append(tr);
+  });
+}
+
+// Analytics: draws the "צפיות לפי קטגוריה" chart, one bar per category, biggest first.
+function categoryChart() {
+  if (charts.categories) charts.categories.destroy();
+
+  // Copied before sorting so the server's order is kept.
+  const sorted = [...overview.categories].sort((a, b) => b.views - a.views);
+  const ink = token('--ink-soft');
+
+  charts.categories = new Chart(categoryCanvas, {
+    type: 'bar',
+    data: {
+      labels: sorted.map((row) => categoryName(row.category)),
+      datasets: [{ label: 'צפיות', data: sorted.map((row) => row.views), backgroundColor: token('--accent') }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      scales: {
+        // reverse, so in a right to left page the bars grow from the right.
+        x: { reverse: true, beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { color: token('--rule') } },
+        y: { position: 'right', ticks: { color: ink }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { rtl: true, callbacks: { label: (item) => number(item.parsed.x) + ' צפיות' } }
+      }
+    }
+  });
+}
+
+// Analytics: draws every part of the "סטטיסטיקות צפייה" dashboard from the data already loaded.
+function paintDashboard() {
+  kpis();
+  lineChart('site', siteCanvas, overview);
+  // The line under the chart: "... צפיות בכל האתר בטווח שנבחר, בחלונות של ...".
+  siteCaption.textContent = number(overview.total) + ' צפיות בכל האתר בטווח שנבחר, בחלונות של '
+    + windowName(overview.stepMinutes) + '.';
+  topTable();
+  categoryChart();
+}
+
+// Fetches the dashboard numbers for the current range, then draws them.
+async function survey() {
+  const mine = ++surveying;
+  overviewProblem.hidden = true;
+
+  const answer = await site.request('GET', '/api/analytics/overview?range=' + range);
+  if (mine !== surveying) return;
+
+  if (!answer.ok) return fail(overviewProblem, answer);
+
+  overview = answer.body;
+  paintDashboard();
+}
+
+// The article picker ----------------------------------------------------------
+
+// Every search carries a number, and an answer to anything but the latest is
+// dropped: typing a word sends a search per pause, and an early one arriving
+// last would otherwise paint its rows under the final query.
+let generation = 0;
+
+// Analytics: one row of the "ניתוח כתבה בודדת" results table.
+function resultRow(article) {
+  const tr = document.createElement('tr');
+  tr.append(
+    titleCell(article.title),
+    cell(categoryName(article.category)),
+    cell(number(article.viewCount)),
+    cell(openButton(article.id))
+  );
+  return tr;
+}
+
+// Analytics: the "חיפוש לפי כותרת" box. Searches published articles; an empty box hides the results.
+async function search() {
+  const mine = ++generation;
+  const text = q.value.trim();
+  pickerProblem.hidden = true;
+
+  // Nothing typed: hide the table instead of showing every article.
+  if (!text) {
+    resultsBox.hidden = true;
+    pickerEmpty.hidden = true;
+    return;
+  }
+
+  // The editor's list API, narrowed to the 8 most viewed published matches.
+  const params = new URLSearchParams({ all: 'true', status: 'published', sort: 'popular', limit: '8', q: text });
+  const answer = await site.request('GET', '/api/articles?' + params);
+  if (mine !== generation) return;
+
+  if (!answer.ok) return fail(pickerProblem, answer);
+
+  results.replaceChildren(...answer.body.articles.map(resultRow));
+  resultsBox.hidden = answer.body.articles.length === 0;
+  pickerEmpty.hidden = answer.body.articles.length > 0;
+}
+
+// Waits for a short pause in typing, so not every letter sends a request.
+let typing;
+q.addEventListener('input', () => {
+  clearTimeout(typing);
+  typing = setTimeout(search, 300);
+});
+
+// Enter searches at once.
+find.addEventListener('submit', (event) => {
+  event.preventDefault();
+  clearTimeout(typing);
+  search();
+});
+
+// One article's report ----------------------------------------------------------
+
+// The last report answer for the selected article.
+let data = null;
+// Counts chart requests. If you click 7d and then 30d quickly, the 7d answer can
+// arrive last; each request remembers its number, and only the newest one draws.
+let drawing = 0;
+
+// Article report: the dashed "פרסום" / "עדכון" lines on the chart, one per publication,
+// at the exact minute it happened, with a label so it does not depend on colour alone.
+const markers = {
+  id: 'publications',
+  afterDatasetsDraw(target) {
+    const { ctx, chartArea: area, scales: { x } } = target;
+    const color = token('--state-pending');
+
+    ctx.save();
+    for (const entry of data.publications) {
+      // Skip a publication that falls outside the visible range.
+      const at = new Date(entry.at).getTime();
+      if (at < x.min || at > x.max) continue;
+
+      // The dashed vertical line.
+      const left = x.getPixelForValue(at);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(left, area.top);
+      ctx.lineTo(left, area.bottom);
+      ctx.stroke();
+
+      // The label above the line.
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = '600 12px Assistant, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(entry.first ? 'פרסום' : 'עדכון', left, area.top - 6);
+    }
+    ctx.restore();
+  }
+};
+
+// Article report: the "שינוי" column, e.g. "+25%", or "חדש" when there was nothing before.
 function change(before, after) {
   if (!before) return after ? 'חדש' : '—';
-  const percent = ((after - before) / before) * 100;
-  return (percent > 0 ? '+' : '') + Math.round(percent) + '%';
+  const value = ((after - before) / before) * 100;
+  return (value > 0 ? '+' : '') + Math.round(value) + '%';
 }
 
+// Article report: fills the "לפני ואחרי כל פרסום" table, one row per publication.
 function table() {
   impact.replaceChildren();
   impactEmpty.hidden = data.impact.length > 0;
@@ -289,6 +413,10 @@ function table() {
   }
 }
 
+// Draws the article's chart, with the publication markers on top.
+const drawReport = () => lineChart('article', canvas, data, [markers]);
+
+// Fetches one article's series for the current range, then fills the report.
 async function show() {
   const mine = ++drawing;
   chartProblem.hidden = true;
@@ -296,67 +424,68 @@ async function show() {
   const answer = await site.request('GET', '/api/articles/' + encodeURIComponent(selected) + '/views?range=' + range);
   if (mine !== drawing) return;
 
-  if (!answer.ok) {
-    chartProblem.textContent = answer.status ? explain(answer.status) : 'אין חיבור לשרת.';
-    chartProblem.hidden = false;
-    return;
-  }
+  if (!answer.ok) return fail(chartProblem, answer);
 
   data = answer.body;
 
+  // Article report heading: title, then "... צפיות בסך הכל · ... פרסומים בטווח".
   reportTitle.textContent = data.article.title;
-  reportMeta.textContent = (site.categories[data.article.category] || data.article.category)
+  reportMeta.textContent = categoryName(data.article.category)
     + ' · ' + number(data.article.viewCount) + ' צפיות בסך הכל'
     + ' · ' + data.publications.length + ' פרסומים בטווח';
   reportLink.href = '/editor/articles/' + data.article.id;
 
+  // The line under the chart: "... צפיות בטווח שנבחר ..." and what the dashed lines mean.
   caption.textContent = number(data.total) + ' צפיות בטווח שנבחר, בחלונות של ' + windowName(data.stepMinutes) + '. '
     + 'הקווים המקווקווים הם רגעי האישור והפרסום.';
 
-  draw();
+  drawReport();
   table();
 }
 
 // Switching views ---------------------------------------------------------------
 
+// The id of the article whose report is open, or '' on the dashboard.
 let selected = report.dataset.selected || '';
 
-// Where the grid was scrolled to, so coming back from a chart lands on the same
-// cards rather than at the top of a long list.
-let gridScroll = 0;
+// Where the dashboard was scrolled to, so coming back from a report lands on
+// the same spot rather than at the top.
+let dashScroll = 0;
 
-function showGrid() {
+// The dashboard is loaded the first time it is shown, and again when the range changes.
+function showDashboard() {
   report.hidden = true;
-  browse.hidden = false;
-  if (!loaded) list();
-  window.scrollTo(0, gridScroll);
+  dashboard.hidden = false;
+  if (overview) paintDashboard(); else survey();
+  window.scrollTo(0, dashScroll);
 }
 
-function showChart() {
-  browse.hidden = true;
+// Swaps to one article's report and loads it.
+function showReport() {
+  dashboard.hidden = true;
   report.hidden = false;
   window.scrollTo(0, 0);
   show();
 }
 
 // A new entry in the history, so the browser's own back button returns to the
-// grid, and the address bar names the article so a reload opens the same chart.
+// dashboard, and the address bar names the article so a reload opens the same chart.
 function pick(id) {
-  gridScroll = window.scrollY;
+  dashScroll = window.scrollY;
   selected = id;
   history.pushState({ article: id }, '', '?article=' + encodeURIComponent(id));
-  showChart();
+  showReport();
 }
 
-// The browser's back and forward buttons, between the grid and a chart.
+// The browser's back and forward buttons, between the dashboard and a report.
 window.addEventListener('popstate', () => {
   selected = new URLSearchParams(location.search).get('article') || '';
-  if (selected) showChart(); else showGrid();
+  if (selected) showReport(); else showDashboard();
 });
 
-// The page's own back button. After a pick it is the same as the browser's;
-// when the page was opened straight on a chart there is nothing to go back to,
-// so it swaps to the grid and rewrites the address instead.
+// The "חזרה ללוח הבקרה" button. After a pick it is the same as the browser's;
+// when the page was opened straight on a report there is nothing to go back to,
+// so it swaps to the dashboard and rewrites the address instead.
 back.addEventListener('click', () => {
   if (history.state && history.state.article) {
     history.back();
@@ -364,21 +493,28 @@ back.addEventListener('click', () => {
   }
   history.replaceState(null, '', location.pathname);
   selected = '';
-  showGrid();
+  showDashboard();
 });
 
+// A range click updates both sets of buttons, then reloads whichever view is showing.
 for (const button of ranges) {
   button.addEventListener('click', () => {
     range = button.dataset.range;
-    for (const other of ranges) other.setAttribute('aria-pressed', String(other === button));
-    if (selected) show();
+    for (const other of ranges) other.setAttribute('aria-pressed', String(other.dataset.range === range));
+
+    // The dashboard's numbers are now for the old range; drop them so it refetches.
+    overview = null;
+    if (!report.hidden) show(); else survey();
   });
 }
 
-// The toggle in the masthead changes data-theme, and a canvas does not restyle
-// itself, so the chart is drawn again in the new colours.
-new MutationObserver(() => { if (chart && data && !report.hidden) draw(); })
-  .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+// The "מצב כהה" toggle in the masthead changes data-theme, and a canvas does not restyle
+// itself, so whatever is on screen is drawn again in the new colours.
+new MutationObserver(() => {
+  if (!report.hidden && data) drawReport();
+  if (!dashboard.hidden && overview) paintDashboard();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-if (selected) showChart(); else showGrid();
+// First paint: the report if the address names an article, the dashboard otherwise.
+if (selected) showReport(); else showDashboard();
 })();

@@ -21,17 +21,21 @@ const FILTERS = {
   update: { published: { $ne: null }, draftStatus: 'pending' }
 };
 
+// The two orders the list offers: last change first, or most viewed first.
 const SORTS = {
   updated: { field: 'updatedAt', order: -1 },
   popular: { field: 'viewCount', order: -1 }
 };
 
+// GET /api/articles?all=true: one page of the editor's list, filtered and sorted from the query string.
 async function list(query) {
+  // Each value is checked against what we allow; a bad one is a 400.
   const status = pick(query.status, Object.keys(FILTERS), 'status');
   const category = pick(query.category, Article.CATEGORIES, 'category');
   const sort = SORTS[pick(query.sort, Object.keys(SORTS), 'sort') || 'updated'];
   const q = searchText(query.q);
 
+  // Build the mongo filter. A copy of FILTERS[status], since run() adds to it.
   const where = status ? { ...FILTERS[status] } : {};
   if (category) where.category = category;
 
@@ -39,6 +43,7 @@ async function list(query) {
   // its working copy, and a rewrite may have changed the headline.
   if (q) where.$and = titleContains(q, ['published.title', 'draft.title']);
 
+  // Page by cursor: query.after is where the previous page stopped.
   return run(where, sort, limitOf(query.limit), query.after);
 }
 
@@ -52,7 +57,9 @@ async function remove(article) {
     VisitorView.deleteMany({ article: article._id })
   ]);
 
+  // The article last, so a failure above leaves it in place to try again.
   await article.deleteOne();
 }
 
+// FILTERS as names only, so editor.js can check ?status= against them.
 module.exports = { list, remove, FILTERS: Object.keys(FILTERS) };

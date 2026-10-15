@@ -3,17 +3,21 @@
 // runs once, as soon as the browser runs this file. The script tag is defer, so
 // that is after the HTML has been read and every element below already exists.
 (() => {
+// Editor list (/editor/articles): the page's elements, looked up once.
+// The filters form and its fields: "מצב", "קטגוריה", "חיפוש לפי כותרת", "מיון".
 const filters = document.getElementById('filters');
 const status = document.getElementById('status');
 const category = document.getElementById('category');
 const q = document.getElementById('q');
 const sort = document.getElementById('sort');
+// The table body, the loading skeleton, "אין כתבות שמתאימות לסינון" and the error line.
 const rows = document.getElementById('rows');
 const loading = document.getElementById('loading');
 const empty = document.getElementById('empty');
 const problem = document.getElementById('problem');
 const sentinel = document.getElementById('sentinel');
 
+// Editor list (/editor/articles): the text of each badge in the "מצב" column.
 const STATES = {
   draft: 'בהכנה',
   pending: 'ממתינה לאישור',
@@ -29,22 +33,27 @@ const WORDING = {
   403: 'האזור הזה הוא לעורכים.'
 };
 
+// Turns an HTTP status into a message for the editor.
 const explain = (code) => WORDING[code] || 'לא הצלחנו לטעון את הכתבות. נסו שוב.';
 
+// Editor list (/editor/articles): shows an error line above the table, e.g. "אין חיבור לשרת."
 const say = (text) => {
   problem.textContent = text;
   problem.hidden = false;
 };
 
+// Formats a date for the "שינוי אחרון" column, e.g. "14 באוק׳, 09:30".
 const when = (iso) => new Date(iso).toLocaleString('he-IL', {
   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
 });
 
+// One coloured badge for the "מצב" column, like "ממתינה לאישור".
 const badge = (state, text) => Object.assign(document.createElement('span'), {
   className: 'status ' + state,
   textContent: text
 });
 
+// One table cell holding text or elements.
 const cell = (...children) => {
   const td = document.createElement('td');
   td.append(...children);
@@ -53,9 +62,11 @@ const cell = (...children) => {
 
 // textContent throughout: a title is whatever its author typed, and a headline
 // of <img onerror=...> would otherwise run.
+// Editor list (/editor/articles): builds one table row for one article.
 function render(article) {
   const tr = document.createElement('tr');
 
+  // "כותרת" column: links to the review page; a changed headline adds "באוויר: ..." below.
   const link = document.createElement('a');
   link.href = '/editor/articles/' + article.id;
   link.textContent = article.title;
@@ -68,25 +79,28 @@ function render(article) {
   }
   tr.append(title);
 
+  // "כתב" and "קטגוריה" columns.
   tr.append(cell(article.reporter ? article.reporter.name : '—'));
   tr.append(cell(site.categories[article.category] || article.category));
 
-  // An article that is out and has a rewrite waiting gets both badges: what the
-  // readers see, and what is waiting on the editor. Colour is never the only
-  // signal, so each says it in words too.
+  // "מצב" column: a live article with a rewrite waiting gets both "באוויר" and
+  // "עדכון ממתין". Each badge has words, not only colour.
   const states = document.createElement('span');
   states.className = 'row tight';
   if (article.isLive && article.state !== 'published') states.append(badge('published', 'באוויר'));
   states.append(badge(article.state, article.hasUpdate ? 'עדכון ממתין' : STATES[article.state] || article.state));
   tr.append(cell(states));
 
+  // "שינוי אחרון" column, in a <time> tag so the exact date is machine readable.
   const time = document.createElement('time');
   time.dateTime = article.updatedAt;
   time.textContent = when(article.updatedAt);
   tr.append(cell(time));
 
+  // "צפיות" column. Only live articles have views; the rest show "—".
   tr.append(cell(article.isLive ? article.viewCount.toLocaleString('he-IL') : '—'));
 
+  // Last column: "סקירה" (pending) or "פתיחה" (others), plus "גרף" for live articles.
   const actions = document.createElement('span');
   actions.className = 'row tight';
   const review = Object.assign(document.createElement('a'), {
@@ -107,6 +121,7 @@ function render(article) {
   return tr;
 }
 
+// Paging state: where the next page starts, whether there is one, and whether one is loading.
 let cursor = null;
 let done = false;
 let busy = false;
@@ -116,6 +131,7 @@ let busy = false;
 // arrive last and paint its rows under the fifth's query.
 let generation = 0;
 
+// The filters as API query parameters. Defaults are left out.
 function query() {
   const params = new URLSearchParams({ all: 'true', limit: '20' });
   if (status.value !== 'all') params.set('status', status.value);
@@ -135,6 +151,7 @@ function remember() {
   history.replaceState(null, '', '?' + params);
 }
 
+// Fetches the next page and appends its rows.
 async function load() {
   if (busy || done) return;
   busy = true;
@@ -170,6 +187,7 @@ async function load() {
   if (!done && sentinel.getBoundingClientRect().top < window.innerHeight) load();
 }
 
+// Editor list (/editor/articles): a filter changed, so clear the table and load from the first page.
 function restart() {
   generation++;
   busy = false;
@@ -188,12 +206,14 @@ if (asked.get('category')) category.value = asked.get('category');
 if (asked.get('q')) q.value = asked.get('q');
 if (asked.get('sort')) sort.value = asked.get('sort');
 
+// The "חיפוש לפי כותרת" box: searches 300ms after typing stops, not on every key.
 let typing;
 q.addEventListener('input', () => {
   clearTimeout(typing);
   typing = setTimeout(restart, 300);
 });
 
+// The "מצב", "קטגוריה" and "מיון" dropdowns: any change reloads the list.
 for (const select of [status, category, sort]) select.addEventListener('change', restart);
 
 // Enter in the search box would otherwise submit the form and reload the page.
@@ -208,5 +228,6 @@ new IntersectionObserver((entries) => {
   if (entries.some((entry) => entry.isIntersecting)) load();
 }, { rootMargin: '300px' }).observe(sentinel);
 
+// First page on arrival.
 load();
 })();

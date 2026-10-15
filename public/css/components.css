@@ -711,18 +711,23 @@ code {
 
 /* The editor's area ----------------------------------------------------------- */
 
-.row.tight { gap: var(--space-2); flex-wrap: nowrap; }
+/* Editor list (/editor/articles): keeps the badges "באוויר" + "עדכון ממתין"
+   and the buttons "סקירה" + "גרף" on one line. */
+/* .row.tight { gap: var(--space-2); flex-wrap: nowrap; } */
 
+/* Editor list (/editor/articles): the "כותרת" column, wide and styled as a link. */
 .queue td:first-child { min-width: 16rem; }
 .queue td:first-child a { color: var(--ink); font-weight: 600; text-decoration: none; }
 .queue td:first-child a:hover { color: var(--accent); }
 
+/* Editor list (/editor/articles): the small "באוויר: ..." line under a changed title. */
 .live-title {
   display: block;
   color: var(--ink-soft);
   font-size: var(--text-xs);
 }
 
+/* Review page (/editor/articles/:id): the "סימון ההבדלים" checkbox and its label. */
 .check {
   display: inline-flex;
   align-items: center;
@@ -732,11 +737,12 @@ code {
 
 .check input { min-height: auto; }
 
+/* Review page: the "השוואת גרסאות" heading row. */
 .compare-head { margin-block-start: var(--space-6); }
 .compare-head h2 { margin: 0; }
 
-/* The two versions side by side, published first, which in a right to left
-   page is the right-hand column. On a narrow screen they stack in that order. */
+/* Review page: the two version boxes side by side, "הגרסה המפורסמת כעת" on the
+   right and "הגרסה החדשה" on the left. They stack on a narrow screen. */
 .compare {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -744,6 +750,7 @@ code {
   margin-block-start: var(--space-4);
 }
 
+/* Review page: one version box. .single is the only box when there is no update to compare. */
 .version,
 .single {
   min-width: 0;
@@ -755,8 +762,10 @@ code {
 
 .single { margin-block-start: var(--space-5); }
 
+/* Review page: the "הגרסה החדשה — ממתינה לאישור" box gets the pending colour border. */
 .version.new { border-color: var(--state-pending); }
 
+/* Review page: the small title on top of each box, e.g. "הגרסה המפורסמת כעת". */
 .version-label {
   margin-block-end: var(--space-4);
   color: var(--ink-soft);
@@ -764,6 +773,7 @@ code {
   font-size: var(--text-sm);
 }
 
+/* Review page: the article image inside a version box. */
 .version-image {
   display: block;
   width: 100%;
@@ -774,15 +784,16 @@ code {
   background: var(--surface-sunk);
 }
 
+/* Review page: the "תמונה: ..." line with the image address. */
 .version-image-url { overflow-wrap: anywhere; font-size: var(--text-xs); }
 
+/* Review page: the summary (תקציר) under the title in a version box. */
 .version-summary { color: var(--ink-soft); font-weight: 600; }
 
 .version .article-body { font-size: var(--text-base); }
 
-/* What a rewrite removed and what it added, shown while the "mark the
-   differences" box is ticked. A strike-through or a side bar as well as a
-   colour, so the difference reads without the colour too. */
+/* Review page: removed words (red, struck through) and added words (green, side bar),
+   shown only while "סימון ההבדלים" is ticked. */
 .compare.marking .removed {
   background: var(--state-returned-bg);
   color: var(--state-returned);
@@ -796,12 +807,14 @@ code {
   padding-inline-start: var(--space-2);
 }
 
+/* Review page: the edit form, "עריכת הכתבה" / "עריכת הגרסה החדשה", below the versions. */
 .edit-copy {
   margin-block-start: var(--space-5);
   padding-block-start: var(--space-5);
   border-block-start: 1px solid var(--rule);
 }
 
+/* Review page: the "היסטוריית פרסום" list at the bottom. */
 .history {
   margin-block-start: var(--space-6);
   font-size: var(--text-sm);
@@ -810,54 +823,47 @@ code {
 .history ol { margin: 0; padding-inline-start: var(--space-5); }
 .history li { margin-block-end: var(--space-1); }
 
-/* The analytics screen. A grid of cards that fills the page, as many to a row
-   as fit, each one a button that opens its chart. */
-
-.choices {
+/* Analytics (/editor/analytics): the row of number tiles, "צפיות בטווח",
+   "כתבות שנצפו" and the rest. As many to a row as fit. */
+.stats {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-4);
-  margin: 0 0 var(--space-4);
-  padding: 0;
-  list-style: none;
+  margin-block-end: var(--space-5);
 }
 
-button.choice {
+/* Analytics: one number tile. */
+.stat {
   display: grid;
-  align-content: start;
-  justify-items: start;
-  gap: var(--space-2);
-  width: 100%;
-  height: 100%;
-  padding: 0 0 var(--space-4);
-  overflow: hidden;
-  background: var(--surface-raised);
-  border-color: var(--rule);
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--rule);
   border-radius: var(--radius);
-  color: var(--ink);
-  font-weight: 400;
-  text-align: start;
-}
-
-button.choice:hover {
   background: var(--surface-raised);
-  border-color: var(--accent);
-  box-shadow: var(--shadow-lifted);
 }
 
-.choice-thumb {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: var(--surface-sunk) center / cover no-repeat;
+/* Analytics tile parts: the name ("צפיות בטווח"), the big number, and the small note under it. */
+.stat-label { color: var(--ink-soft); font-size: var(--text-sm); }
+.stat-value { font-size: var(--text-2xl); font-weight: 700; line-height: var(--leading-tight); }
+.stat-note { color: var(--ink-soft); font-size: var(--text-xs); min-height: 1lh; }
+
+/* Analytics: "הנצפות ביותר בטווח" and "צפיות לפי קטגוריה" side by side. */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--space-5);
+  margin-block: var(--space-5);
 }
 
-.choice-title,
-.choice-meta { padding-inline: var(--space-4); }
+.dash-grid .panel { min-width: 0; }
+.dash-grid .panel + .panel { margin-block-start: 0; }
 
-.choice-title { font-weight: 600; line-height: var(--leading-tight); }
-.choice-meta { color: var(--ink-soft); font-size: var(--text-xs); }
+/* Analytics: the "הנצפות ביותר בטווח" and "ניתוח כתבה בודדת" tables. The title
+   stays readable and the "לניתוח הכתבה" button stays on one line. */
+.picks td:has(> button) { white-space: nowrap; }
+.picks .title { min-width: 14rem; font-weight: 600; }
 
+/* Analytics: the range buttons "24 שעות" / "7 ימים" / "30 יום" / "מאז ומעולם". */
 .segmented {
   display: flex;
   flex-wrap: wrap;
@@ -871,17 +877,23 @@ button.choice:hover {
   color: var(--accent-ink);
 }
 
-/* The canvas takes the box's size, so the box is what decides it. */
+/* Analytics: the box around each chart. The canvas takes the box's size. */
 .chart-box {
   position: relative;
   height: 22rem;
   margin-block-end: var(--space-3);
 }
 
+/* Analytics: the "צפיות לפי קטגוריה" chart box, a little shorter. */
+.chart-box.short { height: 18rem; }
+
+/* Tablets and below: the review page versions and the analytics panels stack. */
 @media (max-width: 60rem) {
   .compare { grid-template-columns: 1fr; }
+  .dash-grid { grid-template-columns: 1fr; }
 }
 
+/* Phones: shorter analytics charts. */
 @media (max-width: 40rem) {
   .chart-box { height: 16rem; }
 }

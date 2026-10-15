@@ -1,42 +1,131 @@
 <%- include('../partials/top') %>
 
-<!-- Two views of one page. Picking a card swaps the grid for that article's
-     chart, and the back button (on the page or in the browser) swaps it back.
-     The id in the address bar is what decides which one shows. -->
+<!-- Analytics (/editor/analytics): two views, the "סטטיסטיקות צפייה" dashboard and one
+     article's report. ?article=<id> in the address bar decides which one shows. -->
 
-<section id="browse" aria-labelledby="browse-title">
-  <h1 id="browse-title">סטטיסטיקות צפייה</h1>
-  <p class="lede">בחרו כתבה כדי לראות את הצפיות בה לאורך זמן, ואיך כל עדכון שפורסם השפיע עליהן.</p>
+<%# The range buttons "24 שעות" / "7 ימים" / "30 יום" / "מאז ומעולם", used by both views. %>
+<% const rangeButtons = () => { %>
+  <div class="segmented" role="group" aria-label="טווח זמן">
+    <button type="button" class="secondary" data-range="24h" aria-pressed="false">24 שעות</button>
+    <button type="button" class="secondary" data-range="7d" aria-pressed="true">7 ימים</button>
+    <button type="button" class="secondary" data-range="30d" aria-pressed="false">30 יום</button>
+    <button type="button" class="secondary" data-range="all" aria-pressed="false">מאז ומעולם</button>
+  </div>
+<% } %>
 
-  <form class="toolbar" id="find" role="search">
-    <div class="field grow">
-      <label for="q">חיפוש לפי כותרת</label>
-      <input id="q" type="search" autocomplete="off" maxlength="100">
+<!-- Analytics: the dashboard, "סטטיסטיקות צפייה". -->
+<section id="dashboard" aria-labelledby="dashboard-title">
+  <h1 id="dashboard-title">סטטיסטיקות צפייה</h1>
+  <p class="lede">תמונת מצב של הצפיות באתר כולו. בתחתית העמוד אפשר לבחור כתבה אחת ולראות איך כל עדכון השפיע עליה.</p>
+
+  <% rangeButtons() %>
+
+  <%# Dashboard error box, e.g. "אין חיבור לשרת.". Shown only when the request fails. %>
+  <p class="problem" id="overview-problem" role="status" hidden></p>
+
+  <!-- Dashboard tiles: "צפיות בטווח", "כתבות שנצפו", "כתבות חדשות שפורסמו", "עדכונים שפורסמו". Filled by kpis(). -->
+  <div class="stats" aria-live="polite">
+    <div class="stat">
+      <span class="stat-label">צפיות בטווח</span>
+      <span class="stat-value" id="kpi-views">—</span>
+      <span class="stat-note" id="kpi-views-note"></span>
     </div>
-    <p class="muted">כתבות שפורסמו, הנצפות ביותר קודם.</p>
-  </form>
-
-  <p class="problem" id="picker-problem" role="status" hidden></p>
-  <ul class="choices" id="choices"></ul>
-
-  <div class="choices" id="picker-loading" aria-hidden="true">
-    <div class="skeleton block"></div>
-    <div class="skeleton block"></div>
-    <div class="skeleton block"></div>
+    <div class="stat">
+      <span class="stat-label">כתבות שנצפו</span>
+      <span class="stat-value" id="kpi-viewed">—</span>
+      <span class="stat-note" id="kpi-viewed-note"></span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">כתבות חדשות שפורסמו</span>
+      <span class="stat-value" id="kpi-published">—</span>
+      <span class="stat-note">בטווח שנבחר</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">עדכונים שפורסמו</span>
+      <span class="stat-value" id="kpi-updates">—</span>
+      <span class="stat-note">לכתבות שכבר היו באוויר</span>
+    </div>
   </div>
 
-  <div class="empty" id="picker-empty" hidden>
-    <h2>אין כתבות שפורסמו בשם הזה</h2>
-    <p>נסו מילה אחרת מהכותרת.</p>
+  <!-- Dashboard: the "צפיות באתר לאורך זמן" chart, all articles together. -->
+  <div class="panel">
+    <h2>צפיות באתר לאורך זמן</h2>
+    <div class="chart-box">
+      <canvas id="site-chart" role="img" aria-label="גרף הצפיות בכל האתר לאורך זמן"></canvas>
+    </div>
+    <p class="muted" id="site-caption"></p>
   </div>
 
-  <!-- What the observer watches: reaching it fetches the next cards. -->
-  <div id="sentinel" aria-hidden="true"></div>
+  <!-- Dashboard: "הנצפות ביותר בטווח" and "צפיות לפי קטגוריה" side by side. -->
+  <div class="dash-grid">
+    <div class="panel">
+      <h2>הנצפות ביותר בטווח</h2>
+      <div class="scrolls">
+        <table class="rows picks">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>כותרת</th>
+              <th>קטגוריה</th>
+              <th>צפיות</th>
+              <th>נתח</th>
+              <th aria-label="פעולות"></th>
+            </tr>
+          </thead>
+          <%# "הנצפות ביותר בטווח" rows, added by topTable() in editor-analytics.js. %>
+          <tbody id="top"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="top-empty" hidden>אין צפיות בטווח הזמן שנבחר.</p>
+    </div>
+
+    <div class="panel">
+      <h2>צפיות לפי קטגוריה</h2>
+      <%# The "צפיות לפי קטגוריה" bar chart, drawn by categoryChart(). %>
+      <div class="chart-box short">
+        <canvas id="category-chart" role="img" aria-label="גרף הצפיות בכל קטגוריה"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard: "ניתוח כתבה בודדת", picking one article. A search with a short list,
+       not a grid of cards, so the page does not look like a list of articles to read. -->
+  <div class="panel">
+    <h2>ניתוח כתבה בודדת</h2>
+    <p class="muted">חפשו כתבה שפורסמה כדי לראות את הצפיות בה לאורך זמן, ואיך כל עדכון השפיע עליהן.</p>
+
+    <form class="toolbar" id="find" role="search">
+      <div class="field grow">
+        <label for="q">חיפוש לפי כותרת</label>
+        <input id="q" type="search" autocomplete="off" maxlength="100" placeholder="מילה מהכותרת">
+      </div>
+    </form>
+
+    <p class="problem" id="picker-problem" role="status" hidden></p>
+
+    <%# The search results table ("כותרת", "צפיות בסך הכל"). Hidden until there are results. %>
+    <div class="scrolls" id="results-box" hidden>
+      <table class="rows picks">
+        <thead>
+          <tr>
+            <th>כותרת</th>
+            <th>קטגוריה</th>
+            <th>צפיות בסך הכל</th>
+            <th aria-label="פעולות"></th>
+          </tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+    <p class="muted" id="picker-empty" hidden>אין כתבות שפורסמו בשם הזה. נסו מילה אחרת מהכותרת.</p>
+  </div>
 </section>
 
-<!-- The article picked in a link from elsewhere, so the page opens on its chart. -->
+<!-- Article report (/editor/analytics?article=<id>). data-selected is that id, so a
+     link from elsewhere (e.g. the "גרף" button in the editor list) opens it directly. -->
 <section id="report" data-selected="<%= selected %>" aria-live="polite" hidden>
-  <p class="crumb"><button type="button" class="quiet" id="back">&rarr; כל הכתבות</button></p>
+  <%# The "חזרה ללוח הבקרה" button: back to the dashboard, like the browser back button. %>
+  <p class="crumb"><button type="button" class="quiet" id="back">&rarr; חזרה ללוח הבקרה</button></p>
 
   <div class="panel">
     <div class="row between">
@@ -44,15 +133,11 @@
         <h1 id="report-title"></h1>
         <p class="byline" id="report-meta"></p>
       </div>
+      <%# "לסקירת הכתבה": opens the article's review page, /editor/articles/:id. %>
       <a class="button secondary" id="report-link" href="#">לסקירת הכתבה</a>
     </div>
 
-    <div class="segmented" role="group" aria-label="טווח זמן">
-      <button type="button" class="secondary" data-range="24h" aria-pressed="false">24 שעות</button>
-      <button type="button" class="secondary" data-range="7d" aria-pressed="false">7 ימים</button>
-      <button type="button" class="secondary" data-range="30d" aria-pressed="false">30 יום</button>
-      <button type="button" class="secondary" data-range="all" aria-pressed="true">כל חיי הכתבה</button>
-    </div>
+    <% rangeButtons() %>
 
     <p class="problem" id="chart-problem" role="status" hidden></p>
 
@@ -61,6 +146,7 @@
     </div>
     <p class="muted" id="chart-caption"></p>
 
+    <!-- Article report: the "לפני ואחרי כל פרסום" table, views 24 hours either side. Filled by table(). -->
     <h2>לפני ואחרי כל פרסום</h2>
     <p class="muted" id="impact-hint"></p>
     <div class="scrolls">
