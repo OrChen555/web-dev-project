@@ -24,7 +24,7 @@ let busy = false;
 // The server answers in English, which is right for the log and wrong for the
 // screen. The wording a reader sees is decided here, from the status.
 const WORDING = {
-  400: 'יש למלא שם ותגובה תקינים.',
+  400: 'השם או התגובה אינם תקינים.',
   404: 'הכתבה כבר לא זמינה.',
   429: 'ניתן לפרסם עד שלוש תגובות בדקה.'
 };
@@ -130,8 +130,15 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   formProblem.hidden = true;
 
-  if (!author.value.trim() || !text.value.trim()) {
-    formProblem.textContent = explain(400);
+  // Checked here first so that each problem gets its own sentence. The server
+  // checks the same two things again and answers 400 for either, which is
+  // why its wording above covers both.
+  const missing = !author.value.trim() || !text.value.trim();
+  const tooLong = author.value.trim().length > author.maxLength
+    || text.value.trim().length > text.maxLength;
+
+  if (missing || tooLong) {
+    formProblem.textContent = missing ? 'יש למלא שם ותגובה.' : 'השם או התגובה ארוכים מהמותר.';
     formProblem.hidden = false;
     return;
   }
