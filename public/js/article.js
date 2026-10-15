@@ -170,9 +170,17 @@ async function confirmRemove(comment, item, button) {
 
   if (!response || !response.ok) {
     button.disabled = false;
-    problemText.textContent = 'לא הצלחנו למחוק את התגובה.';
-    problem.hidden = false;
-    retry.hidden = true;
+
+    // On the row itself, which is where the editor is looking, rather than in
+    // the box at the top of the section. A second failure reuses the same line.
+    let warn = item.querySelector('.problem');
+    if (!warn) {
+      warn = document.createElement('p');
+      warn.className = 'problem';
+      warn.setAttribute('role', 'alert');
+      item.append(warn);
+    }
+    warn.textContent = 'לא הצלחנו למחוק את התגובה. נסו שוב.';
     return;
   }
 
