@@ -1,7 +1,7 @@
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
 const views = require('../services/views');
-const { asCard } = require('./articles');
+const { asCard } = require('../services/cards');
 
 // Rendered on the server, with the whole article in the HTML, so that a search
 // engine or a reader with scripts off sees the same page.

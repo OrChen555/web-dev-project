@@ -2,22 +2,9 @@ const { HttpError } = require('../errors');
 const Article = require('../models/article');
 const feed = require('../services/feed');
 const views = require('../services/views');
+const { asCard } = require('../services/cards');
 const { apply, mayEdit, isEditor } = require('../services/articleState');
 const logger = require('../logger');
-
-// What the feed shows for one article. Kept in one place so the card and the
-// article page cannot drift apart.
-const asCard = (article) => ({
-  id: article._id,
-  title: article.published.title,
-  summary: article.published.summary,
-  image: article.published.image || null,
-  category: article.category,
-  reporter: article.reporter && { id: article.reporter._id, name: article.reporter.name },
-  publishedAt: article.publishedAt,
-  viewCount: article.viewCount,
-  commentCount: article.commentCount
-});
 
 //asCard for the draft article. (no publishedAt, viewCount, commentCount )
 const asDraft = (article) => {
@@ -188,4 +175,4 @@ async function submit(req, res) {
   res.json(asDraft(article));
 }
 
-module.exports = { list, one, view, create, update, revise, submit, asCard };
+module.exports = { list, one, view, create, update, revise, submit };
