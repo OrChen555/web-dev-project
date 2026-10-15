@@ -8,8 +8,6 @@ const WINDOW_MS = 60 * 1000;
 // exists for this one query.
 //
 // Returns how many seconds until the device may post again, or 0 if it may now.
-// Two requests landing in the same instant can both pass the check. That is
-// accepted: the limit is there to stop flooding, not to be an exact ledger.
 async function secondsUntilAllowed(visitorId, now = Date.now()) {
   const recent = await Comment.find({
     visitorId,
@@ -23,4 +21,38 @@ async function secondsUntilAllowed(visitorId, now = Date.now()) {
   return Math.max(1, Math.ceil((free - now) / 1000));
 }
 
-module.exports = { secondsUntilAllowed, LIMIT, WINDOW_MS };
+// The end of the queue for each device that has a comment in progress.
+const queues = new Map();
+
+// Checking the limit and saving the comment are two steps. Run side by side,
+// ten requests from one device all passed the check before any of them had
+// saved, and up to all ten got in. So each device's requests take turns: the
+// next one starts only when the one before it has saved or been refused, and
+// always sees it. Other devices are not held up.
+//
+// The queue lives in this process, which is enough because the site runs as one.
+// A second server process would need the database to do the counting instead.
+function takeTurns(visitorId, task) {
+  const before = queues.get(visitorId) || Promise.resolve();
+  const turn = before.then(task, task);
+  const done = turn.catch(() => {});
+
+  queues.set(visitorId, done);
+  done.then(() => {
+    if (queues.get(visitorId) === done) queues.delete(visitorId);
+  });
+
+  return turn;
+}
+
+// Saves the comment if the device is under the limit. Answers { comment } when
+// it was saved, or { wait } with the seconds until it may post again.
+function admit(visitorId, save) {
+  return takeTurns(visitorId, async () => {
+    const wait = await secondsUntilAllowed(visitorId);
+    if (wait > 0) return { wait };
+    return { comment: await save() };
+  });
+}
+
+module.exports = { admit, secondsUntilAllowed, LIMIT, WINDOW_MS };

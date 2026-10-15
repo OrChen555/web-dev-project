@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { HttpError } = require('../errors');
 const Article = require('../models/article');
 const Comment = require('../models/comment');
-const { secondsUntilAllowed, LIMIT } = require('../services/commentLimit');
+const { admit, LIMIT } = require('../services/commentLimit');
 const logger = require('../logger');
 
 const PAGE = 20;
@@ -90,21 +90,22 @@ async function create(req, res) {
   const author = readField(req.body.author, 'name', MAX_AUTHOR);
   const text = readField(req.body.text, 'comment', MAX_TEXT);
 
-  const wait = await secondsUntilAllowed(req.visitorId);
+  const { comment, wait } = await admit(req.visitorId, () => Comment.create({
+    article: article._id,
+    author,
+    text,
+    visitorId: req.visitorId
+  }));
 
-  if (wait > 0) {
+  if (wait) {
     logger.warn('comment blocked', { visitor: req.visitorId, article: String(article._id) });
     res.set('Retry-After', String(wait));
     throw new HttpError(429, `You can post ${LIMIT} comments a minute. Try again in ${wait} seconds`);
   }
 
-  const comment = await Comment.create({
-    article: article._id,
-    author,
-    text,
-    visitorId: req.visitorId
-  });
-
+  // A second write, so if it fails the count drifts from the real number of
+  // comments and nothing repairs it. Accepted: the comment itself is saved, and
+  // the count is only there so the feed does not have to count on every request.
   await Article.updateOne({ _id: article._id }, { $inc: { commentCount: 1 } });
 
   // The new comment itself, so the page can add it to the list without asking

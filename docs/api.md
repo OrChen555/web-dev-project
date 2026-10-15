@@ -337,8 +337,10 @@ list, which means not re-fetching the collection after posting.
 across every article. Over that is **429**, with a `Retry-After` header saying
 how many seconds until the device may post again. The window slides: it is the
 oldest of the three leaving the last minute that frees a place. A blocked
-attempt is written to the log. Two requests landing in the same instant can
-both pass the check; the limit is there to stop flooding, not to be a ledger.
+attempt is written to the log. Requests from one device are checked and saved
+one at a time (`services/commentLimit.js`), so ten sent at the same instant
+still let exactly three in. That holds within one server process, which is how
+the site runs.
 
 Readers have no account, so nobody owns a comment once it is posted. Changing
 one or removing one is moderation and belongs to the editor: **401** signed out,
