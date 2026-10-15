@@ -1,5 +1,4 @@
 const { HttpError } = require('../errors');
-const Article = require('../models/article');
 const views = require('../services/views');
 const { asCard } = require('../services/cards');
 
@@ -10,11 +9,12 @@ async function page(req, res) {
   // then counts however the reader arrived and whether or not scripts run. It
   // is also the published check. A draft is not reachable by any URL, and 404
   // rather than "not published yet", which would confirm that it exists.
-  if (!(await views.record(req.params.id, req.visitorId))) throw new HttpError(404, 'No such article');
+  const article = await views.record(req.params.id, req.visitorId);
+  if (!article) throw new HttpError(404, 'No such article');
 
-  // Read after the view is counted, so the number on the page includes it.
-  const article = await Article.findById(req.params.id).populate('reporter', 'name');
-  if (!article || !article.published) throw new HttpError(404, 'No such article');
+  // The article comes back with this visit already counted, so the number on
+  // the page includes it. Only the reporter's name is still to be read.
+  await article.populate('reporter', 'name');
 
   res.render('article', {
     title: article.published.title,
