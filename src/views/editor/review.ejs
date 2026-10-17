@@ -1,5 +1,6 @@
 <%- include('../partials/top') %>
 
+<%# Short names used all over this template. live = what readers see, work = the working copy. %>
 <%
   const STATES = { draft: 'בהכנה', pending: 'ממתינה לאישור', returned: 'הוחזרה לתיקונים', published: 'פורסמה' };
   const state = article.state;
@@ -10,11 +11,14 @@
   const id = String(article._id);
 %>
 
+<!-- Review page (/editor/articles/:id): the "חזרה לאזור העורך" link back to the list. -->
 <p class="crumb"><a href="/editor/articles">&rarr; חזרה לאזור העורך</a></p>
 
 <!-- What editor-review.js needs to know: which article this is, and whether it
      is out with no working copy yet (then the first save has to make one). -->
 <article class="panel" id="review" data-id="<%= id %>" data-needs-revise="<%= work ? 'false' : 'true' %>">
+    <!-- Review page (/editor/articles/:id): the title and byline, badges like "באוויר", reporter, category,
+         "שינוי אחרון", and "צפיות" / "תגובות" once live. -->
   <header class="editor-head">
     <div>
       <h1><%= copy.title %></h1>
@@ -37,12 +41,14 @@
     </div>
   </header>
 
+    <%# Review page (/editor/articles/:id): the green notice "הכתבה אושרה ופורסמה" or "הכתבה הוחזרה לכתב" after ?done=. %>
   <% if (done === 'approved') { %>
     <p class="notice good" role="status">הכתבה אושרה ופורסמה. זו הגרסה שהקוראים רואים עכשיו.</p>
   <% } else if (done === 'returned') { %>
     <p class="notice good" role="status">הכתבה הוחזרה לכתב יחד עם ההערה.</p>
   <% } %>
 
+    <%# Review page (/editor/articles/:id): the notice "זהו עדכון לכתבה שכבר פורסמה" or "הכתבה עדיין בהכנה". %>
   <% if (hasUpdate && state === 'pending') { %>
     <div class="notice warn">
       <p><strong>זהו עדכון לכתבה שכבר פורסמה.</strong> הקוראים ממשיכים לראות את הגרסה המפורסמת עד שתאשרו את העדכון. ההבדלים מסומנים בשתי העמודות.</p>
@@ -53,6 +59,7 @@
     </div>
   <% } %>
 
+    <!-- Review page (/editor/articles/:id): the red "הוחזרה לתיקונים" notice with the editor's last note. -->
   <% if (article.editorNote) { %>
     <div class="notice bad">
       <p><strong>הוחזרה לתיקונים<%= article.editorNote.by ? ' על ידי ' + article.editorNote.by.name : '' %>, <%= when(article.editorNote.at) %>:</strong></p>
@@ -60,8 +67,11 @@
     </div>
   <% } %>
 
+  <%# Review page (/editor/articles/:id): error line for the buttons below, filled by say() in editor-review.js. %>
   <p class="problem" id="problem" role="status" hidden></p>
 
+    <!-- Review page (/editor/articles/:id): the buttons "אישור ופרסום", "החזרה לתיקונים" (pending only), "עריכה",
+         "גרף צפיות", "צפייה באתר" (live only) and "מחיקה". -->
   <div class="actions" id="actions">
     <% if (state === 'pending') { %>
       <button type="button" id="approve"><%= hasUpdate ? 'אישור ופרסום העדכון' : 'אישור ופרסום' %></button>
@@ -75,8 +85,8 @@
     <button type="button" class="danger" id="delete">מחיקה</button>
   </div>
 
-  <!-- The editor's own changes go into the working copy, through the same
-       autosave the reporter uses. It never touches what readers see. -->
+  <!-- Review page (/editor/articles/:id): the "עריכת הכתבה" form, opened by "עריכה". It autosaves into the
+       working copy only, never into what readers see. -->
   <form class="edit-copy" id="form" novalidate hidden>
     <h2><%= work ? (hasUpdate ? 'עריכת הגרסה החדשה' : 'עריכת הכתבה') : 'עריכת כתבה שפורסמה' %></h2>
     <p class="muted">
@@ -85,9 +95,11 @@
       <% } else { %>
         השינויים נשמרים אוטומטית לגרסה שבעבודה.<%= live ? ' הגרסה המפורסמת לא משתנה עד לאישור.' : '' %>
       <% } %>
+      <%# The autosave status: "שומר…", "נשמר ב־..." or "לא נשמר". %>
       <span class="saved" id="saved" role="status"></span>
     </p>
 
+    <%# The four fields: "כותרת", "תקציר", "גוף הכתבה", "תמונה". %>
     <div class="field">
       <label for="title">כותרת</label>
       <input id="title" name="title" autocomplete="off" value="<%= copy.title %>">
@@ -109,11 +121,14 @@
       <span class="hint">כתובת של תמונה באינטרנט. השאירו ריק כדי להסיר אותה.</span>
     </div>
 
+    <%# The "סיום עריכה" button: saves what is left and reloads. %>
     <div class="actions">
       <button type="submit" id="finish">סיום עריכה</button>
     </div>
   </form>
 
+    <!-- Review page (/editor/articles/:id): "השוואת גרסאות" with the "סימון ההבדלים" checkbox, for an update.
+         Otherwise a single box with the one copy. -->
   <% if (hasUpdate) { %>
     <div class="row between compare-head">
       <h2>השוואת גרסאות</h2>
@@ -122,9 +137,11 @@
         סימון ההבדלים
       </label>
     </div>
+    <%# The "השתנו: ..." line, filled by editor-review.js. %>
     <p class="muted" id="changed" role="status"></p>
 
     <div class="compare marking" id="compare">
+            <%# Loops twice: "הגרסה המפורסמת כעת" (old), then "הגרסה החדשה" (new). %>
       <% for (const [label, version, kind] of [['הגרסה המפורסמת כעת — מה שהקוראים רואים', live, 'old'], [state === 'pending' ? 'הגרסה החדשה — ממתינה לאישור' : 'הגרסה שבעבודה', work, 'new']]) { %>
         <section class="version <%= kind %>" data-version="<%= kind %>" aria-label="<%= label %>">
           <h3 class="version-label"><%= label %></h3>
@@ -137,6 +154,7 @@
       <% } %>
     </div>
   <% } else { %>
+    <%# The single box: "הגרסה המפורסמת", "התוכן שהוגש" or "התוכן שבעבודה". %>
     <section class="single">
       <h3 class="version-label"><%= live ? 'הגרסה המפורסמת' : (state === 'pending' ? 'התוכן שהוגש' : 'התוכן שבעבודה') %></h3>
       <% if (copy.image) { %><img class="version-image" src="<%= copy.image %>" alt="" loading="lazy"><% } %>
@@ -145,6 +163,7 @@
     </section>
   <% } %>
 
+    <!-- Review page (/editor/articles/:id): the "היסטוריית פרסום" list, every approval, oldest first. -->
   <% if (article.publishHistory.length) { %>
     <section class="history">
       <h2>היסטוריית פרסום</h2>
@@ -161,8 +180,8 @@
   <% } %>
 </article>
 
-<!-- Its own dialog rather than site.confirm, which is text only. The note is
-     required: the reporter has to be able to see what was asked for. -->
+<!-- Review page (/editor/articles/:id): the "החזרה לתיקונים" dialog with the "אילו תיקונים נדרשים?" note.
+     Its own dialog, since site.confirm is text only. The note is required. -->
 <dialog id="send-back" aria-labelledby="send-back-title">
   <h2 id="send-back-title">החזרה לתיקונים</h2>
   <p>הכתב יראה את ההערה ליד הכתבה ויוכל לתקן ולהגיש מחדש.</p>

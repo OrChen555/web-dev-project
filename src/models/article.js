@@ -79,6 +79,7 @@ articleSchema.index({ reporter: 1 });
 // serves a bare draftStatus filter as its prefix, so that one has no index of
 // its own any more.
 articleSchema.index({ draftStatus: 1, updatedAt: -1, _id: -1 });
+// The same list with no state filter ("all").
 articleSchema.index({ updatedAt: -1, _id: -1 });
 
 // No text index on the title. Search matches part of a word, which a text index

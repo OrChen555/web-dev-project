@@ -198,7 +198,9 @@ note, edit (autosaved into the working copy only) and delete (with its comments
 and views). For an update to a published article it shows the published copy and
 the pending one side by side, with the words removed and added marked.
 
-**Impact Analytics** (`/editor/analytics`) — pick a published article and see
+**Impact Analytics** (`/editor/analytics`) — opens on a dashboard for the whole
+site: views in the range against the period before, views over time, the most
+viewed articles and views per category. From there, pick a published article to see
 its views over time on a Chart.js line chart, over 24 hours, 7 days, 30 days or
 its whole life, with a dashed marker at every moment an editor approved a
 version, and a table of views in the 24 hours before and after each one. Views

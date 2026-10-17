@@ -60,6 +60,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // Chart.js, the one browser library the requirements name, served from the
 // installed package rather than copied into public/ or pulled from a CDN: npm
 // install is then the only way to get it, and the demo works without internet.
+// require.resolve finds the package's main file; its folder holds chart.umd.min.js.
 app.use('/vendor/chart.js', express.static(path.dirname(require.resolve('chart.js'))));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -76,6 +77,7 @@ app.use(asyncHandler(loadUser));
 
 // The page being shown, so the masthead can mark which of its links you are on.
 app.use((req, res, next) => {
+  // res.locals is visible in every EJS view; top.ejs reads `path` from it.
   res.locals.path = req.path;
   next();
 });

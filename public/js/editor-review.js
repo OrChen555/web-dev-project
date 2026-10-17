@@ -3,6 +3,7 @@
 // runs once, as soon as the browser runs this file. The script tag is defer, so
 // that is after the HTML has been read and every element below already exists.
 (() => {
+// The page's elements, looked up once. Some only exist in certain states (see review.ejs).
 const review = document.getElementById('review');
 const problem = document.getElementById('problem');
 const approve = document.getElementById('approve');
@@ -22,6 +23,7 @@ const single = document.querySelector('.single');
 const marks = document.getElementById('marks');
 const changed = document.getElementById('changed');
 
+// The article being reviewed, from data-id in the HTML.
 const id = review.dataset.id;
 
 // The server answers in English, which is right for the log but not for the
@@ -34,19 +36,24 @@ const WORDING = {
   409: 'מצב הכתבה השתנה בינתיים. רעננו את הדף.'
 };
 
+// Turns an HTTP status into a message for the editor.
 const explain = (code) => WORDING[code] || 'משהו השתבש. נסו שוב.';
 
+// Review page (/editor/articles/:id): shows an error above the buttons ("אישור ופרסום", "עריכה"...).
 const say = (text) => {
   problem.textContent = text;
   problem.hidden = false;
 };
 
+// Reloads the page; ?done= makes the server show "הכתבה אושרה ופורסמה" or "הכתבה הוחזרה לכתב".
 const reloadWith = (done) => {
   location.href = location.pathname + (done ? '?done=' + done : '');
 };
 
 // The actions ---------------------------------------------------------------
 
+// Review page (/editor/articles/:id): the "אישור ופרסום" button. Asks "לאשר ולפרסם?", publishes, reloads.
+// The button exists only for pending articles.
 if (approve) {
   approve.addEventListener('click', async () => {
     const sure = await site.confirm({
@@ -69,6 +76,7 @@ if (approve) {
   });
 }
 
+// Review page (/editor/articles/:id): the "החזרה לתיקונים" button opens the note dialog, "החזרה לכתב" sends it.
 if (sendBack) {
   sendBack.addEventListener('click', () => {
     noteProblem.hidden = true;
@@ -77,6 +85,7 @@ if (sendBack) {
     note.focus();
   });
 
+  // The dialog's "ביטול" button.
   noteNo.addEventListener('click', () => dialog.close());
 
   noteGo.addEventListener('click', async () => {
@@ -101,6 +110,7 @@ if (sendBack) {
   });
 }
 
+// Review page (/editor/articles/:id): the "מחיקה" button. Asks "למחוק את הכתבה?", then goes back to the list.
 remove.addEventListener('click', async () => {
   const sure = await site.confirm({
     heading: 'למחוק את הכתבה?',
@@ -129,18 +139,22 @@ remove.addEventListener('click', async () => {
 // moment after typing stops, into the working copy only. The published version
 // cannot be reached from here, which is the whole point of keeping two.
 
+// The four edit inputs: "כותרת", "תקציר", "גוף הכתבה", "תמונה".
 const fields = ['title', 'summary', 'body', 'image'];
 const input = {};
 for (const name of fields) input[name] = document.getElementById(name);
 
+// What the server holds now, the autosave timer, and the save in flight.
 let stored = {};
 let timer;
 let saving = null;
 
 const WAIT = 800;
 
+// The time shown in "נשמר ב־...".
 const shownAt = () => new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 
+// Only the fields that differ from what was last saved.
 function changes() {
   const body = {};
   for (const name of fields) {
@@ -156,6 +170,7 @@ function changes() {
 // revise is refused, because the article is no longer just "published".
 let needsRevise = review.dataset.needsRevise === 'true';
 
+// Sends the changes, making a working copy first if there is none yet.
 async function write(body) {
   if (needsRevise) {
     const opened = await site.request('POST', '/api/articles/' + id + '/revise');
@@ -167,6 +182,7 @@ async function write(body) {
 
 // Returns the save in flight, so that finishing can wait for it rather than
 // reloading over a request that has not landed.
+// Saves whatever changed. Resolves true on success, false on failure.
 function save() {
   if (saving) return saving.then(save);
 
@@ -198,6 +214,7 @@ function save() {
   return saving;
 }
 
+// Review page (/editor/articles/:id): the "עריכה" button swaps the read-only view for the edit form.
 if (edit) {
   edit.addEventListener('click', () => {
     stored = {};
@@ -210,6 +227,7 @@ if (edit) {
     input.title.focus();
   });
 
+  // Autosave: every keystroke restarts the timer, and the save runs after a pause.
   for (const name of fields) {
     input[name].addEventListener('input', () => {
       clearTimeout(timer);
@@ -218,6 +236,7 @@ if (edit) {
     });
   }
 
+  // The "סיום עריכה" button: saves anything left, then reloads.
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     clearTimeout(timer);
@@ -227,6 +246,7 @@ if (edit) {
     if (await save()) reloadWith(null);
   });
 
+  // Warns before leaving the page with unsaved changes.
   window.addEventListener('beforeunload', (event) => {
     if (!form.hidden && Object.keys(changes()).length) event.preventDefault();
   });
@@ -239,10 +259,12 @@ if (edit) {
 // body every paragraph that is in one version and not in the other.
 
 if (compare) {
+  // Review page (/editor/articles/:id): field names for the "השתנו: ..." line under "השוואת גרסאות".
   const NAMES = { title: 'כותרת', summary: 'תקציר', image: 'תמונה', body: 'גוף הכתבה' };
   const field = (version, name) => compare.querySelector('[data-version="' + version + '"] [data-field="' + name + '"]');
   const touched = [];
 
+  // The single-value fields: mark both sides if they differ.
   for (const name of ['title', 'summary', 'image']) {
     const before = field('old', name);
     const after = field('new', name);
@@ -274,12 +296,13 @@ if (compare) {
   }
   if (bodyChanged) touched.push(NAMES.body);
 
+  // Fills the "השתנו: ..." line, or "אין הבדל בתוכן בין שתי הגרסאות".
   changed.textContent = touched.length
     ? 'השתנו: ' + touched.join(', ') + '.'
     : 'אין הבדל בתוכן בין שתי הגרסאות.';
 
-  // The marks are classes that stay put; the colours only show while the
-  // compare box has .marking, so the checkbox just switches that one class.
+  // The "סימון ההבדלים" checkbox. The marks stay put; the colours only show while
+  // the compare box has .marking, so the checkbox just switches that one class.
   marks.addEventListener('change', () => compare.classList.toggle('marking', marks.checked));
 }
 })();

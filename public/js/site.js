@@ -3,14 +3,18 @@
 // two `const form` in two classic scripts is a syntax error that takes the
 // whole page down.
 const site = (() => {
+  // Category key -> Hebrew name, e.g. { news: 'חדשות' }, for every "קטגוריה" column/label.
+  // Written into <body> by top.ejs.
   const categories = JSON.parse(document.body.dataset.categories);
 
   // Calls the API and answers { ok, status, body }. status 0 means no connection.
   async function request(method, url, data) {
+    // fetch throws only when there is no connection; an HTTP error still resolves.
     try {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        // undefined data (a GET) becomes no body at all.
         body: JSON.stringify(data)
       });
       // 204 (after a delete) has no body to read.
@@ -103,5 +107,6 @@ const site = (() => {
     });
   }
 
+  // What page scripts can use: site.confirm, site.request, site.categories.
   return { confirm, request, categories };
 })();

@@ -17,24 +17,29 @@ const { BANKS, OPENERS, CLOSERS, UPDATES, NOTES, COMMENTERS, REMARKS } = require
 //
 // For the index measurements, --bulk=3000 still pads the collection with filler.
 
+// The password every demo account gets. Override with SEED_PASSWORD.
 const PASSWORD = process.env.SEED_PASSWORD || 'password';
 
+// Time units in milliseconds. SLOT is one view bucket (15 minutes).
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const SLOT = ViewBucket.WINDOW_MINUTES * MINUTE;
 
+// One fixed "now" for the whole run, so every date is relative to the same moment.
 const NOW = Date.now();
 const daysAgo = (n) => new Date(NOW - n * DAY);
 
 // Plain Math.random: the data only has to cover every case, not come out the
 // same twice.
 const random = Math.random;
+// Small random helpers: a number in a range, a whole number, a list item, a yes/no.
 const between = (low, high) => low + random() * (high - low);
 const whole = (low, high) => Math.floor(between(low, high + 1));
 const pick = (list) => list[Math.floor(random() * list.length)];
 const chance = (p) => random() < p;
 
+// Mixes a list in place (Fisher-Yates) and returns it.
 function shuffle(list) {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
@@ -48,12 +53,14 @@ function shuffle(list) {
 // 0.3 comes out as 1 about a third of the time and 0 otherwise.
 const roughly = (expected) => Math.floor(expected * between(0.6, 1.4) + random());
 
+// A simple version of an article: the summary repeated as six paragraphs.
 const copy = (title, summary) => ({
   title,
   summary,
   body: Array.from({ length: 6 }, (_, i) => summary + ' פסקה ' + (i + 1) + '.').join('\n\n')
 });
 
+// Creates the demo accounts: the admin, one editor and six reporters.
 async function people() {
   // password is a virtual: the model hashes it on save, so a readable password
   // never reaches the database.
@@ -77,20 +84,25 @@ async function people() {
 
 // The hand-picked ten -----------------------------------------------------------
 
+// Ten articles written by hand, one or two in every state.
 function plan({ dana, yonatan, michal }) {
   return [
+    // Drafts the reporter is still writing.
     { by: dana, category: 'news', draft: copy('טיוטה של דנה', 'כתבה שעדיין בכתיבה'), status: 'draft' },
     { by: yonatan, category: 'sports', draft: copy('טיוטה של יונתן', 'עוד כתבה בהכנה'), status: 'draft' },
 
+    // Sent to the editor and waiting for approval.
     { by: dana, category: 'politics', draft: copy('ממתינה לאישור', 'הוגשה לעורך וממתינה'), status: 'pending' },
     { by: yonatan, category: 'economy', draft: copy('עוד אחת לאישור', 'בתור אצל העורך'), status: 'pending' },
 
+    // Sent back by the editor, with a note saying what to fix.
     {
       by: dana, category: 'culture',
       draft: copy('הוחזרה לתיקונים', 'העורכת ביקשה שינויים'), status: 'returned',
       note: { text: 'חסר ציטוט ממקור שני, ואפשר לקצר את הפתיחה.', by: michal, at: daysAgo(1) }
     },
 
+    // Already published, at different ages (since = days ago).
     { by: dana, category: 'news', live: copy('פורסמה לפני שבוע', 'כתבה שכבר באוויר'), since: 7 },
     { by: dana, category: 'technology', live: copy('פורסמה לפני ארבעה ימים', 'כתבה נוספת שפורסמה'), since: 4 },
     { by: yonatan, category: 'health', live: copy('פורסמה לפני יומיים', 'עוד כתבה שפורסמה'), since: 2 },
@@ -107,6 +119,7 @@ function plan({ dana, yonatan, michal }) {
   ];
 }
 
+// Saves the hand-picked articles one by one and returns the saved documents.
 async function write(rows, editor) {
   const saved = [];
 
@@ -118,6 +131,7 @@ async function write(rows, editor) {
       draftStatus: row.status || null
     });
 
+    // A published one gets its copy, its date, and one history entry per approval, 3 days apart.
     if (row.live) {
       const updates = row.updates || 1;
       article.published = row.live;
@@ -138,6 +152,7 @@ async function write(rows, editor) {
   return saved;
 }
 
+// Adds three comments to the first three published hand-picked articles.
 async function conversation(articles) {
   // One published article is deliberately left without any comments, because an
   // empty list is where list rendering tends to break.
@@ -180,17 +195,21 @@ const MIX = {
 // out. These are the articles the Impact Analytics chart is for.
 const UPDATED = 30;
 
+// Every title used so far, so no two generated articles share a headline.
 const used = new Set();
 
+// Makes up one article for a category from the word banks in demo-content.js.
 function story(category) {
   const bank = BANKS[category];
 
+  // Picks "source: headline" until it finds one not used yet.
   let title;
   do {
     title = pick(bank.sources) + ': ' + pick(bank.headlines);
   } while (used.has(title) && used.size < 5000);
   used.add(title);
 
+  // The body is five paragraphs built from the category's lines, in a random order.
   const lines = shuffle([...bank.lines]);
   const paragraphs = [
     pick(OPENERS) + ' ' + lines[0],
@@ -216,6 +235,7 @@ function rewrite(version, category, n) {
   return next;
 }
 
+// A stable placeholder photo for 9 in 10 articles; the rest have no image.
 const image = (n) => (chance(0.9) ? `https://picsum.photos/seed/daily-web-${n}/800/450` : undefined);
 
 // Whole hours, sometimes a quarter past: the example in the requirements is an
@@ -247,6 +267,7 @@ function publications(updates) {
 
 // Reading habits by hour of the day: quiet at night, busy with the morning
 // coffee and again in the evening.
+// One multiplier per hour, 0 (midnight) to 23.
 const DAY_SHAPE = [0.35, 0.25, 0.18, 0.15, 0.15, 0.25, 0.5, 0.85, 1.1, 1.2, 1.15, 1.1,
   1.1, 1.05, 1, 1, 1.05, 1.1, 1.2, 1.35, 1.4, 1.3, 1, 0.6];
 
@@ -258,6 +279,7 @@ const DAY_SHAPE = [0.35, 0.25, 0.18, 0.15, 0.15, 0.25, 0.5, 0.85, 1.1, 1.2, 1.15
 // "Fades" is Math.exp(-age / fade): 1 at the moment of publishing, then smaller
 // and smaller as the hours pass.
 function traffic(articleId, times, featured) {
+  // How busy the article is: featured ones get more readers and a steady trickle that never ends.
   const peak = featured ? between(18, 45) : between(0.5, 15);
   const fade = between(8, 30) * HOUR;
   const steady = featured ? between(0.4, 1.5) : 0;
@@ -266,6 +288,7 @@ function traffic(articleId, times, featured) {
   const rows = [];
   let total = 0;
 
+  // Walk 15 minutes at a time, adding the fading first burst and every update's burst.
   for (let t = ViewBucket.windowFor(new Date(times[0])).getTime(); t < NOW; t += SLOT) {
     let expected = peak * Math.exp(-(t - times[0]) / fade) + steady;
     for (const burst of bursts) {
@@ -287,6 +310,7 @@ function traffic(articleId, times, featured) {
   return { rows, total };
 }
 
+// Makes `count` comments at random times between `from` and now.
 function comments(articleId, from, count) {
   return Array.from({ length: count }, () => {
     const at = new Date(from + random() * (NOW - from));
@@ -313,8 +337,10 @@ function prepare(fields, createdAt, updatedAt) {
   return { ...article.toObject({ virtuals: false }), createdAt: new Date(createdAt), updatedAt: new Date(updatedAt) };
 }
 
+// Builds the generated articles, their view buckets and their comments, all in memory.
 function demo(staff) {
   const editors = [staff.michal, staff.admin];
+  // One entry per article to make (e.g. 30 x 'draft'), shuffled so states are mixed.
   const kinds = shuffle(Object.entries(MIX).flatMap(([kind, n]) => Array(n).fill(kind)));
   let updatedLeft = UPDATED;
 
@@ -322,6 +348,7 @@ function demo(staff) {
   const buckets = [];
   const talk = [];
 
+  // Categories go round in turn, so every category gets about the same number.
   kinds.forEach((kind, n) => {
     const category = Article.CATEGORIES[n % Article.CATEGORIES.length];
     const first = { ...story(category), image: image(n) };
@@ -345,6 +372,7 @@ function demo(staff) {
     const featured = updatedLeft > 0 && (kind === 'update' || chance(0.1));
     if (featured) updatedLeft--;
 
+    // Featured: 2-4 updates. Otherwise usually none, sometimes one.
     const times = publications(featured ? whole(2, 4) : (chance(0.08) ? 1 : 0));
 
     // The published copy is the last approved version, so it carries every
@@ -366,6 +394,7 @@ function demo(staff) {
       if (kind === 'revision-returned') fields.editorNote = { text: pick(NOTES), by: pick(editors)._id, at: new Date(touched) };
     }
 
+    // Views and comments for the chart and the counters on the article.
     const views = traffic(fields._id, times, featured);
     buckets.push(...views.rows);
     fields.viewCount = views.total;
@@ -396,6 +425,7 @@ async function trafficForPlan(articles) {
   return rows;
 }
 
+// Writes rows straight to the collection, 10,000 at a time to keep each request small.
 async function insert(Model, rows) {
   for (let i = 0; i < rows.length; i += 10000) {
     await Model.collection.insertMany(rows.slice(i, i + 10000), { ordered: false });
@@ -421,7 +451,9 @@ async function filler(count, reporter) {
   return count;
 }
 
+// The script itself: check the database is local, empty it, write everything, print a summary.
 async function run() {
+  // Optional --bulk=N adds N filler articles for index measurements.
   const asked = process.argv.find((a) => a.startsWith('--bulk='));
   const extra = asked ? Number(asked.split('=')[1]) : 0;
 
@@ -437,11 +469,13 @@ async function run() {
 
   await db.connect(config.mongoUri);
 
+  // Empty every collection and make sure its indexes match the models.
   for (const model of [User, Article, Comment, ViewBucket, VisitorView]) {
     await model.deleteMany({});
     await model.syncIndexes();
   }
 
+  // First the hand-picked ten, then the generated ones.
   const staff = await people();
   const picked = await write(plan(staff), staff.michal);
   const pickedComments = await conversation(picked);
@@ -455,6 +489,7 @@ async function run() {
 
   const padding = extra > 0 ? await filler(extra, staff.dana) : 0;
 
+  // Count what was written, for the summary printed below.
   const count = (where) => Article.countDocuments(where);
   const [total, drafts, pending, returned, live, updates, several] = await Promise.all([
     count({}),
@@ -481,6 +516,7 @@ async function run() {
   await mongoose.disconnect();
 }
 
+// Any error stops the script with a non-zero exit code.
 run().catch((err) => {
   console.error(err.message);
   process.exit(1);

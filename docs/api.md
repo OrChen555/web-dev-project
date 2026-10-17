@@ -332,6 +332,7 @@ message meant for a reader to see, not a bare status code.
 POST   /api/articles/:id/views   -> 204   counts one view
                                     404   no published article with that id
 GET    /api/articles/:id/views?range=24h|7d|30d|all   -> 200   the series, editor only
+GET    /api/analytics/overview?range=24h|7d|30d|all   -> 200   the whole-site dashboard, editor only
 ```
 
 The POST is `services/views.js`, and does three things together: adds one to
@@ -374,6 +375,24 @@ as a day. Windows with no views come back as zeros rather than missing, or the
 line would skip over a quiet stretch. `impact` is the views in the 24 hours
 before and after each publication, and per hour, so an update made this
 morning is compared fairly with one made last week.
+
+The dashboard (`GET /api/analytics/overview`, default `7d`) sums every article
+together, inside MongoDB:
+
+```json
+{
+  "range": "7d", "from": "…", "to": "…", "stepMinutes": 30,
+  "total": 186860, "previousTotal": 91268,
+  "live": 430, "viewed": 225, "published": 150, "updates": 121,
+  "buckets": [ { "at": "…", "count": 512 } ],
+  "top": [ { "id": "…", "title": "…", "category": "health", "views": 7716, "share": 0.041, "viewCount": 12218 } ],
+  "categories": [ { "category": "news", "views": 19231 } ]
+}
+```
+
+`previousTotal` is the views in the same length of time just before, or `null`
+for `all`. `published` and `updates` count first publications and later ones
+in the range. `top` is the 10 most viewed articles in the range.
 
 ## Weather — person 2
 

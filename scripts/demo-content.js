@@ -3,6 +3,7 @@
 // "article 1" to "article 500", and so that searching for a real word (תקציב,
 // ממשלה, נבחרת) finds a realistic handful rather than everything or nothing.
 
+// Per category: who said it (sources), what happened (headlines), and body lines.
 const BANKS = {
   news: {
     sources: ['משטרת ישראל', 'עיריית תל אביב', 'משרד התחבורה', 'כבאות והצלה', 'מגן דוד אדום', 'עיריית חיפה',
@@ -111,6 +112,7 @@ const BANKS = {
   }
 };
 
+// A first sentence for any article, whatever its category.
 const OPENERS = [
   'הדיווח הראשון הגיע בשעות הבוקר, ומאז מתפרסמים פרטים נוספים.',
   'ההודעה הרשמית פורסמה הבוקר ועוררה תגובות רבות.',
@@ -118,6 +120,7 @@ const OPENERS = [
   'הפרטים נחשפו לראשונה בכתבה זו.'
 ];
 
+// A last line for any article.
 const CLOSERS = [
   'נמשיך לעדכן כאן ככל שיתקבלו פרטים נוספים.',
   'תגובות הגורמים הנוגעים בדבר יובאו בהמשך.',
@@ -134,6 +137,7 @@ const UPDATES = [
   'עדכון: עדים נוספים מסרו את גרסתם, והתמונה המלאה מתבהרת.'
 ];
 
+// What an editor writes when sending an article back for fixes.
 const NOTES = [
   'חסר ציטוט ממקור שני. אפשר לקצר את הפתיחה.',
   'הכותרת ארוכה מדי ולא משקפת את עיקר הידיעה.',
@@ -143,6 +147,7 @@ const NOTES = [
   'התקציר חוזר על הכותרת. כדאי לחדד אותו.'
 ];
 
+// Names and texts for the generated reader comments.
 const COMMENTERS = ['אורח', 'קורא מהצפון', 'רותי', 'משה מחולון', 'שירן', 'אבי', 'דני כ.', 'מיכל', 'יעל מבאר שבע',
   'עומר', 'נועם', 'תמר', 'גלעד', 'ליאת', 'קורא ותיק'];
 

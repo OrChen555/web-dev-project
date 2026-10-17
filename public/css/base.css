@@ -90,8 +90,8 @@ img { max-width: 100%; height: auto; }
 
 .masthead nav a:hover { color: var(--accent); }
 
-/* The page you are on. A line as well as a colour, so it does not rely on
-   colour alone. */
+/* Masthead nav (every page): the link of the page you are on, e.g. "סטטיסטיקות",
+   underlined as well as coloured so it does not rely on colour alone. */
 .masthead nav a[aria-current='page'] {
   color: var(--ink);
   font-weight: 600;

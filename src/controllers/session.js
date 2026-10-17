@@ -7,6 +7,7 @@ const User = require('../models/user');
 // reporter to their work area and an editor to the management area.
 const landingFor = (user) => {
   if (user.isAdmin) return '/admin/users';
+  // Everyone else is either an editor or a reporter.
   return user.role === 'editor' ? '/editor/articles' : '/reporter/articles';
 };
 

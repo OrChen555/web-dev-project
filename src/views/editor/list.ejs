@@ -1,11 +1,13 @@
 <%- include('../partials/top') %>
 
+<!-- Editor list (/editor/articles): the "אזור העורך" heading and the "סטטיסטיקות צפייה" button to /editor/analytics. -->
 <div class="row between">
   <h1>אזור העורך</h1>
   <a class="button secondary" href="/editor/analytics">סטטיסטיקות צפייה</a>
 </div>
 <p class="lede">כל הכתבות במערכת, של כל הכתבים. כתבה שממתינה לאישור נפתחת לסקירה, עריכה, אישור או החזרה לתיקונים.</p>
 
+<%# The options of the "מצב" dropdown, e.g. "ממתינות לאישור". %>
 <% const LABELS = {
   all: 'הכל',
   pending: 'ממתינות לאישור',
@@ -15,9 +17,11 @@
   published: 'פורסמו'
 }; %>
 
+<!-- The filters bar: "מצב", "קטגוריה", "חיפוש לפי כותרת", "מיון". editor-list.js reloads the table on any change. -->
 <form class="toolbar" id="filters" role="search">
   <div class="field">
     <label for="status">מצב</label>
+    <%# The server picks the starting state (from ?status=), so the right option is selected on load. %>
     <select id="status" name="status">
       <% for (const value of ['all', 'pending', 'update', 'draft', 'returned', 'published']) { %>
         <option value="<%= value %>" <%= value === status ? 'selected' : '' %>><%= LABELS[value] %></option>
@@ -25,6 +29,7 @@
     </select>
   </div>
 
+  <%# "קטגוריה" dropdown, starting with "כל הקטגוריות". %>
   <div class="field">
     <label for="category">קטגוריה</label>
     <select id="category" name="category">
@@ -35,11 +40,13 @@
     </select>
   </div>
 
+  <%# "חיפוש לפי כותרת" box, takes the remaining width. %>
   <div class="field grow">
     <label for="q">חיפוש לפי כותרת</label>
     <input id="q" name="q" type="search" autocomplete="off" maxlength="100">
   </div>
 
+  <%# "מיון" dropdown: "שינוי אחרון" or "הכי נצפות". %>
   <div class="field">
     <label for="sort">מיון</label>
     <select id="sort" name="sort">
@@ -49,8 +56,10 @@
   </div>
 </form>
 
+<!-- The error line above the table, e.g. "אין חיבור לשרת." Hidden until a request fails. -->
 <p class="problem" id="problem" role="status" hidden></p>
 
+<!-- The articles table ("כותרת", "כתב", "קטגוריה", "מצב" ...). Rows come from editor-list.js, 20 at a time. -->
 <div class="scrolls">
   <table class="rows queue">
     <thead>
@@ -79,6 +88,7 @@
   <div class="skeleton line short"></div>
 </div>
 
+<!-- "אין כתבות שמתאימות לסינון": shown when the filters match nothing. -->
 <div class="empty" id="empty" hidden>
   <h2>אין כתבות שמתאימות לסינון</h2>
   <p>נסו מצב אחר, קטגוריה אחרת או חיפוש אחר.</p>
