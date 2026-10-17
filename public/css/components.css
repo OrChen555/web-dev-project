@@ -897,3 +897,31 @@ code {
 @media (max-width: 40rem) {
   .chart-box { height: 16rem; }
 }
+
+/* Article page ------------------------------------------------------------- */
+
+.reading {
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+.article-head h1 {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  margin-block-end: var(--space-3);
+}
+
+.article-head .lede { margin-block-end: var(--space-3); }
+
+.hero {
+  margin: var(--space-5) 0;
+}
+
+.hero img {
+  display: block;
+  width: 100%;
+  max-height: 26rem;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--surface-sunk);
+}

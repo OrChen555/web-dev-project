@@ -10,16 +10,18 @@ const { markSeen } = require('./seen');
 // Every opening counts, as the requirements ask, so the counter and the bucket
 // go up each time. Seen is an upsert and stays one row however often.
 //
-// Returns false when there is no published article with that id, so that the
-// caller can answer 404. A draft cannot be viewed by the public, so it cannot
-// collect views either.
+// Returns the article as it is after the view, or null when there is no
+// published article with that id, so that the caller can answer 404. A draft
+// cannot be viewed by the public, so it cannot collect views either. The whole
+// document comes back because the article page renders it: counting and reading
+// in one query rather than two, on the busiest page of the site.
 async function record(articleId, visitorId) {
   const article = await Article.findOneAndUpdate(
     { _id: articleId, published: { $ne: null } },
     { $inc: { viewCount: 1 } },
-    { projection: { _id: 1 } }
+    { new: true }
   );
-  if (!article) return false;
+  if (!article) return null;
 
   await Promise.all([
     ViewBucket.updateOne(
@@ -30,7 +32,7 @@ async function record(articleId, visitorId) {
     markSeen(visitorId, article._id)
   ]);
 
-  return true;
+  return article;
 }
 
 module.exports = { record };
