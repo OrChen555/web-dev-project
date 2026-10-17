@@ -5,6 +5,7 @@ const session = require('./session');
 const users = require('./users');
 const articles = require('./articles');
 const analytics = require('./analytics');
+const comments = require('./comments');
 const weather = require('./weather');
 const { page: articlePage } = require('../controllers/articlePage');
 const asyncHandler = require('../middlewares/asyncHandler');
@@ -26,6 +27,7 @@ router.use('/api/session', session);
 router.use('/api/users', users);
 router.use('/api/articles', articles);
 router.use('/api/analytics', analytics);
+router.use('/api/comments', comments);
 router.use('/api/weather', weather);
 
 router.get('/', home);

@@ -6,6 +6,7 @@ const { requireAuth, requireRole } = require('../middlewares/auth');
 const Article = require('../models/article');
 const { list, one, view, create, update, revise, submit } = require('../controllers/articles');
 const editor = require('../controllers/editor');
+const comments = require('../controllers/comments');
 
 // Mounted at /api/articles in routes/index.js, so '/' here is /api/articles.
 const router = express.Router();
@@ -25,6 +26,11 @@ router.get('/:id', asyncHandler(one));
 // A guest's view counts as much as anyone's, so this needs no session either.
 // The device comes from the visitor cookie, never from the body.
 router.post('/:id/views', asyncHandler(view));
+
+// Readers are guests, so neither of these asks who is signed in. The device is
+// req.visitorId, which is what the three a minute limit counts by.
+router.get('/:id/comments', asyncHandler(comments.list));
+router.post('/:id/comments', asyncHandler(comments.create));
 
 // Writing a new article: reporters only.
 router.post('/',
