@@ -31,6 +31,47 @@
   <div class="article-body">
     <% paragraphs.forEach((text) => { %><p><%= text %></p><% }) %>
   </div>
+
+  <section class="comments" id="comments" aria-labelledby="comments-title">
+    <h2 id="comments-title">תגובות (<span id="comment-count"><%= story.commentCount %></span>)</h2>
+
+    <form id="comment-form" class="comment-form" novalidate>
+      <div class="field">
+        <label for="author">שם</label>
+        <input id="author" name="author" type="text" maxlength="60" autocomplete="nickname" required>
+      </div>
+      <div class="field">
+        <label for="text">תגובה</label>
+        <textarea id="text" name="text" rows="4" maxlength="2000" required></textarea>
+      </div>
+
+      <p class="problem" id="form-problem" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="submit" id="send">פרסום תגובה</button>
+      </div>
+    </form>
+
+    <div id="comments-loading" aria-live="polite">
+      <div class="skeleton line"></div>
+      <div class="skeleton line short"></div>
+    </div>
+
+    <div class="empty" id="comments-empty" hidden>
+      <p><strong>עדיין אין תגובות.</strong> אפשר להיות הראשונים להגיב.</p>
+    </div>
+
+    <div class="notice bad" id="comments-problem" role="alert" hidden>
+      <p id="comments-problem-text"></p>
+      <button type="button" class="secondary" id="comments-retry">ניסיון חוזר</button>
+    </div>
+
+    <ol class="comment-list" id="comment-list"></ol>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="more" hidden>תגובות נוספות</button>
+    </div>
+  </section>
 </article>
 
 <%- include('partials/bottom') %>

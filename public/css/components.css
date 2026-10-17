@@ -925,3 +925,58 @@ code {
   border-radius: var(--radius);
   background: var(--surface-sunk);
 }
+
+/* Comments ---------------------------------------------------------------- */
+
+.comments {
+  margin-block-start: var(--space-7);
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--rule);
+}
+
+/* The script shows and hides these with the hidden attribute. A button has a
+   display rule of its own, which would otherwise beat the attribute and leave
+   "more comments" on screen when there are none. */
+.comments [hidden] { display: none; }
+
+.comment-form {
+  margin-block-end: var(--space-6);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+/* A comment that has just been posted, so the reader can see where it went. */
+.comment.fresh { border-color: var(--accent); }
+
+.comment .head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.comment .who { font-weight: 600; }
+.comment .when { color: var(--ink-faint); font-size: var(--text-xs); }
+/* The text is whatever a stranger typed; keep their line breaks and stop one
+   long word from pushing the page sideways. */
+.comment p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
