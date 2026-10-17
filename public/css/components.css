@@ -973,6 +973,14 @@ code {
 
 .comment .who { font-weight: 600; }
 .comment .when { color: var(--ink-faint); font-size: var(--text-xs); }
+.comment .tools {
+  display: flex;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.comment textarea { width: 100%; margin-block-end: var(--space-2); }
+
 /* The text is whatever a stranger typed; keep their line breaks and stop one
    long word from pushing the page sideways. */
 .comment p {

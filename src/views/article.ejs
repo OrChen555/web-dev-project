@@ -32,7 +32,8 @@
     <% paragraphs.forEach((text) => { %><p><%= text %></p><% }) %>
   </div>
 
-  <section class="comments" id="comments" aria-labelledby="comments-title">
+  <section class="comments" id="comments" aria-labelledby="comments-title"
+           data-editor="<%= locals.user && user.role === 'editor' ? 'true' : 'false' %>">
     <h2 id="comments-title">תגובות (<span id="comment-count"><%= story.commentCount %></span>)</h2>
 
     <form id="comment-form" class="comment-form" novalidate>
