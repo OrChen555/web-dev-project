@@ -35,6 +35,78 @@ function random(seed) {
 
 const rand = random(20260928);
 const pick = (list) => list[Math.floor(rand() * list.length)];
+const between = (low, high) => low + rand() * (high - low);
+
+const SLOT = ViewBucket.WINDOW_MINUTES * 60 * 1000;
+
+// How far back the steady trickle reaches. Covers the dashboard's widest fixed
+// range with room to spare, without a row per window per article for months.
+const TRICKLE_DAYS = 35;
+
+// Readers by hour of the day, quiet overnight and busiest in the evening. Without
+// it every chart is a flat line, which is the one thing real traffic never is.
+const DAY_SHAPE = [0.35, 0.25, 0.18, 0.15, 0.15, 0.25, 0.5, 0.85, 1.1, 1.2, 1.15, 1.1,
+  1.1, 1.05, 1, 1, 1.05, 1.1, 1.2, 1.35, 1.4, 1.3, 1, 0.6];
+
+// The analytics chart reads ViewBucket and nothing else, so without these rows
+// every range on it is empty however many articles exist.
+//
+// The shape, not the total: an article's viewCount is already decided, and the
+// deliberate ones in docs/qa-feed.md depend on keeping the exact number they
+// were given. So this works out how busy each fifteen minute window was
+// relatively, then hands out that article's views in proportion.
+//
+// Readers arrive in a burst when a version goes out and fade away after it, so
+// each entry in publishHistory starts one. A few articles also keep a steady
+// trickle, which is what gives the recent ranges something to draw for articles
+// published months ago.
+function traffic(article) {
+  const times = (article.publishHistory || []).map((entry) => entry.at.getTime());
+  if (!times.length || !article.viewCount) return [];
+
+  const fade = between(8, 30) * HOUR;
+  const steady = rand() < 0.25 ? between(0.05, 0.4) : 0;
+  const bursts = times.map((at) => ({ at, size: between(0.9, 1.4), fade: between(4, 14) * HOUR }));
+
+  const slots = [];
+  let sum = 0;
+
+  // The trickle only runs over the last few weeks. Further back it would add a
+  // row per window per article for months, which is most of the rows written for
+  // a part of the chart nobody looks at: the dashboard's widest fixed range is 30
+  // days, and the lifetime view is dominated by the bursts anyway.
+  const trickleFrom = NOW - TRICKLE_DAYS * DAY;
+
+  for (let t = ViewBucket.windowFor(new Date(times[0])).getTime(); t < NOW; t += SLOT) {
+    let weight = t >= trickleFrom ? steady : 0;
+    for (const burst of bursts) {
+      if (t >= burst.at) weight += burst.size * Math.exp(-(t - burst.at) / burst.fade);
+    }
+    weight *= DAY_SHAPE[new Date(t).getHours()];
+
+    // Faded to nothing, with no trickle still to come: every window from here on
+    // would be a zero, so stop rather than walk months of them.
+    if (weight < 0.0005 && t > times[times.length - 1] && (!steady || t >= trickleFrom)) break;
+
+    if (weight > 0) {
+      slots.push({ at: t, weight });
+      sum += weight;
+    }
+  }
+
+  if (!sum) return [];
+
+  // Largest remainder, so the rows add up to viewCount exactly rather than
+  // drifting by the rounding on every one of them.
+  const exact = slots.map((slot) => (slot.weight / sum) * article.viewCount);
+  const rows = slots.map((slot, i) => ({ article: article._id, bucket: new Date(slot.at), count: Math.floor(exact[i]) }));
+
+  let left = article.viewCount - rows.reduce((total, row) => total + row.count, 0);
+  const order = exact.map((value, i) => [value - Math.floor(value), i]).sort((a, b) => b[0] - a[0]);
+  for (let i = 0; i < order.length && left > 0; i++, left--) rows[order[i][1]].count += 1;
+
+  return rows.filter((row) => row.count > 0);
+}
 
 // Three parts per headline, so seven categories give far more distinct titles
 // than the demo needs and none of them repeat.
@@ -263,12 +335,22 @@ async function run() {
   for (let i = 0; i < bulk.length; i += 500) await Article.insertMany(bulk.slice(i, i + 500));
   await Article.insertMany(special);
 
+  // After the articles are in, so every row has its _id and its publishHistory.
+  const buckets = [];
+  for await (const article of Article.find({ published: { $ne: null }, viewCount: { $gt: 0 } })
+    .select('_id viewCount publishHistory').lean().cursor()) {
+    buckets.push(...traffic(article));
+  }
+  for (let i = 0; i < buckets.length; i += 2000) await ViewBucket.insertMany(buckets.slice(i, i + 2000));
+
   const live = await Article.countDocuments({ published: { $ne: null } });
   const drafts = await Article.countDocuments({ published: null });
+  const oldest = buckets.length ? new Date(Math.min(...buckets.map((row) => row.bucket.getTime()))) : null;
 
   console.log('users      6     admin, michal (editors) · dana, yonatan, noa, amir (reporters)');
   console.log('published  ' + live + '   ' + count + ' ordinary, plus the ones docs/qa-feed.md names');
   console.log('hidden     ' + (drafts + 1) + '     three drafts, plus one pending update on a live article');
+  console.log('views      ' + buckets.length + ' fifteen minute buckets' + (oldest ? ', back to ' + oldest.toISOString().slice(0, 10) : ''));
   console.log('password   every account: ' + PASSWORD);
   console.log('');
   console.log('Next: npm start, open http://localhost:3000, and follow docs/qa-feed.md.');
