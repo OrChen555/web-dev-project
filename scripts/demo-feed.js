@@ -43,6 +43,10 @@ const SLOT = ViewBucket.WINDOW_MINUTES * 60 * 1000;
 // range with room to spare, without a row per window per article for months.
 const TRICKLE_DAYS = 35;
 
+// The most windows one article may fill. Enough for a readable curve on every
+// range the chart offers, which never draws more than 400 points anyway.
+const MAX_SLOTS = 220;
+
 // Readers by hour of the day, quiet overnight and busiest in the evening. Without
 // it every chart is a flat line, which is the one thing real traffic never is.
 const DAY_SHAPE = [0.35, 0.25, 0.18, 0.15, 0.15, 0.25, 0.5, 0.85, 1.1, 1.2, 1.15, 1.1,
@@ -69,7 +73,6 @@ function traffic(article) {
   const bursts = times.map((at) => ({ at, size: between(0.9, 1.4), fade: between(4, 14) * HOUR }));
 
   const slots = [];
-  let sum = 0;
 
   // The trickle only runs over the last few weeks. Further back it would add a
   // row per window per article for months, which is most of the rows written for
@@ -88,12 +91,22 @@ function traffic(article) {
     // would be a zero, so stop rather than walk months of them.
     if (weight < 0.0005 && t > times[times.length - 1] && (!steady || t >= trickleFrom)) break;
 
-    if (weight > 0) {
-      slots.push({ at: t, weight });
-      sum += weight;
-    }
+    if (weight > 0) slots.push({ at: t, weight });
   }
 
+  if (!slots.length) return [];
+
+  // The busiest windows only. Every window an article was ever read in would be
+  // hundreds of thousands of rows across the feed, nearly all of them a 1 that
+  // no range on the chart is wide enough to show separately. Dropping the quiet
+  // ones keeps the shape, and the views they held move into the peaks.
+  if (slots.length > MAX_SLOTS) {
+    slots.sort((a, b) => b.weight - a.weight);
+    slots.length = MAX_SLOTS;
+    slots.sort((a, b) => a.at - b.at);
+  }
+
+  const sum = slots.reduce((total, slot) => total + slot.weight, 0);
   if (!sum) return [];
 
   // Largest remainder, so the rows add up to viewCount exactly rather than
@@ -336,21 +349,38 @@ async function run() {
   await Article.insertMany(special);
 
   // After the articles are in, so every row has its _id and its publishHistory.
-  const buckets = [];
+  // Written as it goes rather than gathered first: the whole history is hundreds
+  // of thousands of rows, and holding them all to count them at the end is both
+  // the memory and the spread that blew the stack.
+  let batch = [];
+  let written = 0;
+  let oldestAt = Infinity;
+
+  const flush = async () => {
+    if (!batch.length) return;
+    await ViewBucket.insertMany(batch, { ordered: false });
+    written += batch.length;
+    batch = [];
+  };
+
   for await (const article of Article.find({ published: { $ne: null }, viewCount: { $gt: 0 } })
     .select('_id viewCount publishHistory').lean().cursor()) {
-    buckets.push(...traffic(article));
+    for (const row of traffic(article)) {
+      if (row.bucket.getTime() < oldestAt) oldestAt = row.bucket.getTime();
+      batch.push(row);
+    }
+    if (batch.length >= 5000) await flush();
   }
-  for (let i = 0; i < buckets.length; i += 2000) await ViewBucket.insertMany(buckets.slice(i, i + 2000));
+  await flush();
 
   const live = await Article.countDocuments({ published: { $ne: null } });
   const drafts = await Article.countDocuments({ published: null });
-  const oldest = buckets.length ? new Date(Math.min(...buckets.map((row) => row.bucket.getTime()))) : null;
+  const oldest = written ? new Date(oldestAt) : null;
 
   console.log('users      6     admin, michal (editors) · dana, yonatan, noa, amir (reporters)');
   console.log('published  ' + live + '   ' + count + ' ordinary, plus the ones docs/qa-feed.md names');
   console.log('hidden     ' + (drafts + 1) + '     three drafts, plus one pending update on a live article');
-  console.log('views      ' + buckets.length + ' fifteen minute buckets' + (oldest ? ', back to ' + oldest.toISOString().slice(0, 10) : ''));
+  console.log('views      ' + written + ' fifteen minute buckets' + (oldest ? ', back to ' + oldest.toISOString().slice(0, 10) : ''));
   console.log('password   every account: ' + PASSWORD);
   console.log('');
   console.log('Next: npm start, open http://localhost:3000, and follow docs/qa-feed.md.');
