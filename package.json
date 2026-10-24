@@ -14,7 +14,6 @@
     "db:down": "docker compose down",
     "db:ui": "docker compose --profile tools up -d viewer",
     "db:ui:down": "docker compose stop viewer",
-    "seed": "node scripts/seed.js",
     "seed:demo": "node scripts/demo-feed.js",
     "seen": "node scripts/mark-seen.js"
   },

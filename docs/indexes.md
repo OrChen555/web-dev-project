@@ -7,7 +7,7 @@ here; this page is the evidence for what is and is not indexed.
 ## Setup
 
 - MongoDB 7.0.43, the `mongo:7` container from `docker-compose.yml`.
-- `npm run seed -- --bulk=3000`: **3,005 published articles**, 430 of them in `sports`.
+- `npm run seed:demo -- --count=3000`: **3,000+ published articles** across seven categories.
   Seven categories, one article a minute, random view counts.
 - A visitor with **1,000 articles seen**, the ceiling in `services/seen.js`,
   spread evenly through the feed. Two harder visitors as well: one who has seen
@@ -59,7 +59,7 @@ anything it could serve, they serve. One index fewer to keep up on every write.
 **An existing database keeps the old one.** Mongoose builds missing indexes when
 the app starts but never drops one the schema no longer lists, so a database
 from before this change still has `category_1` until indexes are synced.
-`npm run seed` does that (it calls `syncIndexes()`), and so does
+`npm run seed:demo` does that (it calls `syncIndexes()`), and so does
 `Article.syncIndexes()` on its own for a database whose data should be kept.
 
 The indexes without a category were already exact: **21 keys, 21 documents**

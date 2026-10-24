@@ -73,14 +73,16 @@ All editor only. Approve and return go through the state machine
 
 ## The demo data
 
-`npm run seed` **empties the database**, then writes:
+`npm run seed:demo` **empties the database**, then writes:
 
-- 8 accounts: `admin`, the editor `michal`, 6 reporters. Password `password`
-- 510 articles in every state and category, about 30 updated after publishing
-- about 1,000 comments, and views over time for the chart
+- 6 accounts: `admin`, the editor `michal`, 4 reporters. Password `password`
+- 639 articles: 635 published, plus one in each state a reporter can produce
+- comments, and views in fifteen minute buckets for the chart
 
-The text comes from word lists in `scripts/demo-content.js`. Seed again shortly
-before a demo, since the times are relative to now.
+Seed again shortly before a demo, since the times are relative to now.
+
+This used to be `npm run seed`, which was removed once `seed:demo` covered the
+same states with far more data.
 
 ## Check it yourself
 
